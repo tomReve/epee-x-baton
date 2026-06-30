@@ -1,14 +1,15 @@
 import { Skill, SkillData } from './Skill';
 
 export interface HeroData {
-    id: string;
-    name: string;
-    hp: number;
-    maxHp: number;
-    attack: number;
-    defense: number;
-    speed: number;         // intervalle d'attaque en ms
-    skills: SkillData[];
+  id:        string;
+  name:      string;
+  hp:        number;
+  maxHp:     number;
+  attack:    number;
+  defense:   number;
+  speed:     number;
+  skills:    SkillData[];
+  // ✅ plus d'attackRange ici
 }
 
 export class Hero {

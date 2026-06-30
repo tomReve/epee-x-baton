@@ -1,12 +1,19 @@
+export interface AoeShape {
+  type:   'radius' | 'line' | 'cross' | 'square' | 'all';
+  value?: number;
+}
+
 export interface SkillData {
-    id: string;
-    name: string;
-    damage?: number;
-    heal?: number;
-    hits?: number;
-    cooldownTurns: number;   // ✅ remplace cooldown (ms)
-    target: 'enemy' | 'ally' | 'self';
-    type: 'physical' | 'magic' | 'support';
+  id:            string;
+  name:          string;
+  damage?:       number;
+  heal?:         number;
+  hits?:         number;
+  cooldownTurns: number;
+  range:         number;        // ✅ portée du skill (remplace attackRange sur l'unité)
+  targetType:    'single' | 'aoe' | 'all';
+  aoe?:          AoeShape;      // ✅ défini uniquement si targetType === 'aoe'
+  type:          'physical' | 'magic' | 'support';
 }
 
 export class Skill {

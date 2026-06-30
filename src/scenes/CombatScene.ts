@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
-import { GridSystem, GridUnit } from '../systems/GridSystem';
+import { GridPosition, GridSystem, GridUnit } from '../systems/GridSystem';
 import { CombatSystem, CombatEvent } from '../systems/CombatSystem';
 import { Hero } from '../entities/Hero';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../utils/EventBus';
 import { UnitAnimator } from '../entities/UnitAnimator';
 import { TurnSystem } from '../systems/TurnSystem';
+import { SkillData } from '../entities/Skill';
 
 export class CombatScene extends Phaser.Scene {
     private grid!: GridSystem;
@@ -44,6 +45,9 @@ export class CombatScene extends Phaser.Scene {
         w: number;
     }> = new Map();
 
+    private aoePreviewGraphics!: Phaser.GameObjects.Graphics;
+
+
     constructor() { super({ key: 'CombatScene' }); }
 
     create(): void {
@@ -67,41 +71,80 @@ export class CombatScene extends Phaser.Scene {
         // --- Création des héros ---
         const sword = new Hero({
             id: 'sword', name: 'Sword',
-            hp: 200, maxHp: 200, attack: 25, defense: 5, speed: 1200,
+            hp: 2000, maxHp: 2000, attack: 25, defense: 5, speed: 1200,
             // Dans la définition du hero sword :
             skills: [
                 {
-                    id: 'multihit',
-                    name: 'Multi Hit',
-                    damage: 20,        // dégâts par coup
-                    hits: 4,         // nombre de coups
-                    cooldownTurns: 1,
-                    target: 'enemy',
+                    id: 'slash',
+                    name: 'Power Slash',
+                    damage: 40,
+                    cooldownTurns: 3,
+                    range: 1,           // ✅ portée : 1 case
+                    targetType: 'single',
                     type: 'physical'
                 },
                 {
-                    id: 'slash',
-                    name: 'Slash',
-                    damage: 25,        // dégâts par coup
-                    cooldownTurns: 0,
-                    target: 'enemy',
+                    id: 'multihit',
+                    name: 'Multi Hit',
+                    damage: 20,
+                    hits: 4,
+                    cooldownTurns: 5,
+                    range: 1,
+                    targetType: 'single',
                     type: 'physical'
+                },
+                {
+                    id: 'whirlwind',
+                    name: 'Whirlwind',
+                    damage: 30,
+                    cooldownTurns: 4,
+                    range: 1,           // portée du caster pour déclencher le sort
+                    targetType: 'aoe',
+                    aoe: { type: 'radius', value: 2 }, // ✅ touche dans un rayon de 2 cases
+                    type: 'physical'
+                },
+                {
+                    id: 'shockwave', name: 'Shockwave', damage: 25, cooldownTurns: 3,
+                    range: 0, targetType: 'aoe', aoe: { type: 'square', value: 1 }, type: 'physical'
                 }
             ]
         });
         const staff = new Hero({
             id: 'staff', name: 'Staff',
-            hp: 150, maxHp: 150, attack: 18, defense: 3, speed: 1500,
+            hp: 1500, maxHp: 1500, attack: 18, defense: 3, speed: 1500,
             skills: [
-                { id: 'regen', name: 'Regen', heal: 30, cooldownTurns: 1, target: 'self', type: 'support' }
+                { id: 'regen', name: 'Regen', heal: 30, cooldownTurns: 1, range: 3, targetType: 'single', type: 'support' },
+                {
+                    id: 'meteor',
+                    name: 'Meteor',
+                    damage: 25,
+                    cooldownTurns: 1,
+                    range: 0,
+                    targetType: 'all',      // ✅ touche tous les ennemis vivants
+                    type: 'magic'
+                },
+                {
+                    id: 'holycross',
+                    name: 'Holy Cross',
+                    damage: 25,
+                    cooldownTurns: 6,
+                    range: 3,
+                    targetType: 'aoe',
+                    aoe: { type: 'cross', value: 2 }, // ✅ croix de 2 cases dans chaque direction
+                    type: 'magic'
+                },
+                {
+                    id: 'nova', name: 'Nova', damage: 35, cooldownTurns: 5,
+                    range: 2, targetType: 'aoe', aoe: { type: 'square', value: 2 }, type: 'magic'
+                }
             ]
         });
         this.heroes = [sword, staff];
 
         // --- Création des ennemis ---
-        const goblin1 = new Enemy({ id: 'goblin1', name: 'Goblin', hp: 120, maxHp: 120, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 });
-        const goblin2 = new Enemy({ id: 'goblin2', name: 'Goblin', hp: 120, maxHp: 120, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 });
-        const boss = new Enemy({ id: 'boss', name: 'Boss', hp: 400, maxHp: 400, attack: 22, defense: 8, speed: 1800, xpReward: 100, goldReward: 50 });
+        const goblin1 = new Enemy({ id: 'goblin1', name: 'Goblin', hp: 1000, maxHp: 1000, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 });
+        const goblin2 = new Enemy({ id: 'goblin2', name: 'Goblin', hp: 1000, maxHp: 1000, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 });
+        const boss = new Enemy({ id: 'boss', name: 'Boss', hp: 2000, maxHp: 2000, attack: 22, defense: 8, speed: 1800, xpReward: 100, goldReward: 50 });
         this.enemies = [goblin1, goblin2, boss];
 
         // --- Placement sur la grille ---
@@ -109,17 +152,16 @@ export class CombatScene extends Phaser.Scene {
             id: string;
             isHero: boolean;
             moveRange: number;
-            attackRange: number;
             col: number;
             row: number;
         }
 
         const placements: Placement[] = [
-            { id: 'sword', isHero: true, moveRange: 2, attackRange: 1, col: 0, row: 1 },
-            { id: 'staff', isHero: true, moveRange: 2, attackRange: 2, col: 0, row: 2 },
-            { id: 'goblin1', isHero: false, moveRange: 1, attackRange: 1, col: 5, row: 0 },
-            { id: 'goblin2', isHero: false, moveRange: 1, attackRange: 1, col: 5, row: 3 },
-            { id: 'boss', isHero: false, moveRange: 2, attackRange: 1, col: 5, row: 2 },
+            { id: 'sword', isHero: true, moveRange: 3, col: 1, row: 3 },
+            { id: 'staff', isHero: true, moveRange: 3, col: 0, row: 2 },
+            { id: 'goblin1', isHero: false, moveRange: 3, col: 5, row: 0 },
+            { id: 'goblin2', isHero: false, moveRange: 3, col: 5, row: 3 },
+            { id: 'boss', isHero: false, moveRange: 3, col: 5, row: 2 },
         ];
 
         for (const p of placements) {
@@ -127,14 +169,15 @@ export class CombatScene extends Phaser.Scene {
                 id: p.id,
                 isHero: p.isHero,
                 pos: { col: p.col, row: p.row },
-                moveRange: p.moveRange,
-                attackRange: p.attackRange,
+                moveRange: p.moveRange
             };
             this.grid.addUnit(unit);
         }
 
         // --- Dessin de la grille ---
         this.drawGrid();
+
+        this.aoePreviewGraphics = this.add.graphics().setDepth(5); // entre les tiles et les unités
 
         // --- Sprites des unités ---
         for (const hero of this.heroes) this.createUnitSprite(hero.data.id, hero.data.name, true, hero.currentHp, hero.data.maxHp);
@@ -296,12 +339,19 @@ export class CombatScene extends Phaser.Scene {
     private flashSprite(id: string): void {
         const container = this.unitSprites.get(id);
         if (!container) return;
+
+        // Arrête tout tween en cours sur ce container avant d'en lancer un nouveau
+        this.tweens.killTweensOf(container);
+
         this.tweens.add({
             targets: container,
             alpha: 0.2,
             duration: 80,
             yoyo: true,
-            repeat: 2
+            repeat: 2,
+            onComplete: () => {
+                container.setAlpha(1); // ✅ garantit le retour à 1 quoi qu'il arrive
+            }
         });
     }
 
@@ -402,6 +452,17 @@ export class CombatScene extends Phaser.Scene {
                 break;
             }
 
+            case 'skill_preview': {
+                const casterUnit = this.grid.getUnit(event.source!);
+                if (casterUnit && event.skillData) {
+                    this.showAoePreview(event.skillData, casterUnit);
+                }
+                return;
+            }
+
+            case 'skill_preview_clear':
+                this.clearAoePreview();
+                return;
 
             case 'enemy_died':
                 this.killSprite(event.source!);
@@ -790,5 +851,68 @@ export class CombatScene extends Phaser.Scene {
         }
     }
 
+    private showAoePreview(skill: SkillData, casterUnit: GridUnit): void {
+        this.clearAoePreview();
 
+        // Résout les cases touchées
+        const cells = this.resolvePreviewCells(skill, casterUnit);
+        if (cells.length === 0) return;
+
+        const g = this.aoePreviewGraphics;
+
+        // Couleur selon le type de skill
+        const color = skill.type === 'magic' ? 0x8844ff
+            : skill.type === 'support' ? 0x44ff88
+                : 0xff6622; // physical
+
+        cells.forEach(cell => {
+            const x = this.GRID_OFFSET_X + cell.col * this.CELL_W;
+            const y = this.GRID_OFFSET_Y + cell.row * this.CELL_H;
+
+            // Fond coloré semi-transparent
+            g.fillStyle(color, 0.3);
+            g.fillRect(x + 2, y + 2, this.CELL_W - 4, this.CELL_H - 4);
+
+            // Contour coloré
+            g.lineStyle(1.5, color, 0.8);
+            g.strokeRect(x + 2, y + 2, this.CELL_W - 4, this.CELL_H - 4);
+        });
+
+        // Animation de pulsation sur l'alpha
+        this.tweens.add({
+            targets: g,
+            alpha: { from: 0.6, to: 1 },
+            duration: 400,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+        });
+    }
+
+    private clearAoePreview(): void {
+        this.tweens.killTweensOf(this.aoePreviewGraphics);
+        this.aoePreviewGraphics.clear();
+        this.aoePreviewGraphics.setAlpha(1);
+    }
+
+    private resolvePreviewCells(skill: SkillData, casterUnit: GridUnit): GridPosition[] {
+        if (skill.targetType === 'all') {
+            // Toutes les cases ennemies
+            return this.grid.getAllUnits()
+                .filter(u => u.isHero !== casterUnit.isHero)
+                .map(u => u.pos);
+        }
+
+        if (skill.targetType === 'aoe' && skill.aoe) {
+            const origin = skill.range === 0
+                ? casterUnit.pos
+                : this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos;
+
+            return this.grid.getAoeCells(origin, skill.aoe);
+        }
+
+        // single — juste la première cible en range
+        const target = this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0];
+        return target ? [target.pos] : [];
+    }
 }

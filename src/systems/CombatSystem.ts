@@ -1,6 +1,6 @@
 import { Hero } from '../entities/Hero';
 import { Enemy } from '../entities/Enemy';
-import { Skill } from '../entities/Skill';
+import { Skill, SkillData } from '../entities/Skill';
 import { GridSystem, GridUnit } from './GridSystem';
 import { TurnSystem } from './TurnSystem';
 
@@ -17,7 +17,10 @@ export interface CombatEvent {
     | 'combat_won'
     | 'combat_lost'
     | 'combat_timeout'
-    | 'cooldowns_updated';
+    | 'cooldowns_updated'
+    | 'aoe_start'
+    | 'skill_preview'   // ✅ nouveau — déclenche la preview AOE
+    | 'skill_preview_clear' // ✅ efface la preview;
     source?: string;
     target?: string;
     value?: number;
@@ -28,6 +31,7 @@ export interface CombatEvent {
     hitIndex?: number;
     totalHits?: number;
     skillId?: string; // ✅ nouveau
+    skillData?: SkillData;
 }
 
 export type CombatEventCallback = (event: CombatEvent) => void;
@@ -94,7 +98,6 @@ export class CombatSystem {
 
     private processTurn(): void {
         if (!this.running) return;
-
         const unit = this.turns.current();
         if (!unit || !unit.isAlive()) {
             this.turns.next();
@@ -112,24 +115,32 @@ export class CombatSystem {
     }
 
 
+    // Dans CombatSystem.processHeroTurn :
     private processHeroTurn(id: string): void {
         const hero = this.heroes.find(h => h.data.id === id)!;
         const gridUnit = this.grid.getUnit(id)!;
+        const readySkills = hero.skills.filter(s => s.isReady());
 
-        let targets = this.grid.getTargetsInRange(gridUnit);
+        // Vérifie si au moins un skill prêt a une cible en range
+        const hasTarget = readySkills.some(skill =>
+            this.grid.getAoeTargets(gridUnit, skill.data).length > 0
+        );
 
-        if (targets.length === 0) {
+        if (!hasTarget) {
+            // Déplacement vers la cible la plus proche
             const from = { ...gridUnit.pos };
             const to = this.grid.moveTowardNearest(gridUnit);
 
             if (to) {
                 this.onEvent({ type: 'unit_moved', source: id, fromPos: from, toPos: to });
-                targets = this.grid.getTargetsInRange(gridUnit);
 
                 setTimeout(() => {
                     if (!this.running) return;
-                    if (targets.length > 0) {
-                        this.executeHeroSkills(hero, targets);
+                    const targetsAfterMove = readySkills.some(skill =>
+                        this.grid.getAoeTargets(gridUnit, skill.data).length > 0
+                    );
+                    if (targetsAfterMove) {
+                        this.executeHeroSkills(hero, []);
                     } else {
                         this.endHeroTurn(hero, null);
                     }
@@ -140,70 +151,105 @@ export class CombatSystem {
             return;
         }
 
-        this.executeHeroSkills(hero, targets);
+        this.executeHeroSkills(hero, []);
     }
 
-    // ✅ Lance TOUS les skills prêts à la suite, plus d'attaque de base
-    private executeHeroSkills(hero: Hero, targets: GridUnit[]): void {
-        const enemyTarget = this.enemies.find(e =>
-            e.isAlive() && targets.some(t => t.id === e.data.id)
-        );
-        if (!enemyTarget) { this.endHeroTurn(hero, null); return; }
-
+    private executeHeroSkills(hero: Hero, _targets: GridUnit[]): void {
         const readySkills = hero.skills.filter(s => s.isReady());
 
         if (readySkills.length === 0) {
-            // ✅ Aucun skill prêt — le héros ne fait rien ce tour (plus d'attaque de base)
             this.endHeroTurn(hero, null);
             return;
         }
 
-        this.castSkillsSequentially(hero, readySkills, 0, enemyTarget);
+        this.castSkillsSequentially(hero, readySkills, 0, new Set());
     }
 
-    // Enchaîne les skills prêts un par un avec un délai entre chaque
     private castSkillsSequentially(
-        hero: Hero, skills: Skill[], index: number, target: Enemy,
-        usedThisTurn: Set<string> = new Set() // ✅ accumule tous les skills castés
+        hero: Hero,
+        skills: Skill[],
+        index: number,
+        usedThisTurn: Set<string>
     ): void {
         if (index >= skills.length || !this.running) {
-            this.endHeroTurn(hero, usedThisTurn); // ✅ passe le Set complet
-            return;
-        }
-
-        const skill = skills[index];
-        if (!target.isAlive()) {
+            // ✅ Efface la preview en fin de chaîne
+            this.onEvent({ type: 'skill_preview_clear' });
             this.endHeroTurn(hero, usedThisTurn);
             return;
         }
 
-        usedThisTurn.add(skill.data.id); // ✅ ajoute avant le cast
-        const animDelay = this.useHeroSkill(hero, skill, target);
+        const skill = skills[index];
+        const gridUnit = this.grid.getUnit(hero.data.id)!;
 
+        const liveTargets = this.grid.getAoeTargets(gridUnit, skill.data)
+            .map(t => this.enemies.find(e => e.data.id === t.id && e.isAlive()))
+            .filter(Boolean) as Enemy[];
+
+        if (liveTargets.length === 0) {
+            this.onEvent({ type: 'skill_preview_clear' });
+            this.endHeroTurn(hero, usedThisTurn);
+            return;
+        }
+
+        // ✅ Prévisualise la zone AVANT le cast
+        this.onEvent({
+            type: 'skill_preview',
+            source: hero.data.id,
+            skillData: skill.data,
+        });
+
+        // Délai court pour laisser la preview visible avant l'impact
         setTimeout(() => {
             if (!this.running) return;
-            this.castSkillsSequentially(hero, skills, index + 1, target, usedThisTurn);
-        }, animDelay);
+
+            usedThisTurn.add(skill.data.id);
+            const animDelay = this.useHeroSkill(hero, skill, liveTargets);
+
+            // Efface la preview au moment de l'impact
+            this.onEvent({ type: 'skill_preview_clear' });
+
+            setTimeout(() => {
+                if (!this.running) return;
+                this.castSkillsSequentially(hero, skills, index + 1, usedThisTurn);
+            }, animDelay);
+        }, 400); // 400ms de preview avant l'impact
     }
 
-    // Retourne le délai d'anim au lieu de gérer finishTurn lui-même
-    private useHeroSkill(hero: Hero, skill: Skill, target: Enemy): number {
+    // Retire resolveTargets() — c'est maintenant GridSystem.getAoeTargets() qui s'en charge
+    private useHeroSkill(
+        hero: Hero,
+        skill: Skill,
+        targets: Enemy[]
+    ): number {
         skill.use();
-
         this.onEvent({ type: 'cooldowns_updated', source: hero.data.id, skillId: skill.data.id });
 
         const hits = skill.data.hits ?? 1;
+        let totalDelay = 0;
 
-        if (skill.data.damage) {
+        targets.forEach((target, targetIndex) => {
+            const targetDelay = targetIndex * 150;
+
             for (let i = 0; i < hits; i++) {
-                const dmg = target.takeDamage(skill.data.damage + hero.data.attack);
-                this.onEvent({
-                    type: 'skill_used', source: hero.data.id, target: target.data.id,
-                    value: dmg, skillName: skill.data.name, hitIndex: i, totalHits: hits,
-                });
-                if (!target.isAlive()) { this.handleDeath(target.data.id, false); break; }
+                const hitDelay = targetDelay + i * 120;
+                setTimeout(() => {
+                    if (!this.running || !target.isAlive()) return;
+                    const dmg = target.takeDamage((skill.data.damage ?? 0) + hero.data.attack);
+                    this.onEvent({
+                        type: 'skill_used',
+                        source: hero.data.id,
+                        target: target.data.id,
+                        value: dmg,
+                        skillName: skill.data.name,
+                        hitIndex: i,
+                        totalHits: hits,
+                    });
+                    if (!target.isAlive()) this.handleDeath(target.data.id, false);
+                }, hitDelay);
+
+                totalDelay = Math.max(totalDelay, hitDelay);
             }
-        }
+        });
 
         if (skill.data.heal) {
             hero.heal(skill.data.heal);
@@ -213,7 +259,7 @@ export class CombatSystem {
             });
         }
 
-        return hits * 120 + this.ATTACK_ANIM_DELAY;
+        return totalDelay + this.ATTACK_ANIM_DELAY;
     }
 
     // ✅ Point d'entrée unique de fin de tour héros — tick tous les skills SAUF le dernier utilisé

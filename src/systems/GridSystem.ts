@@ -1,4 +1,8 @@
-import { AoeShape } from '../entities/Skill';
+import { SkillData, AoeShape } from '../entities/Skill';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface GridPosition {
   col: number;
@@ -12,6 +16,13 @@ export interface GridUnit {
   moveRange: number;
 }
 
+// ---------------------------------------------------------------------------
+// GridSystem
+//
+// Responsabilité : gestion pure de la grille (positions, déplacements, portées).
+// Aucune dépendance vers Phaser ou les entités Hero/Enemy.
+// ---------------------------------------------------------------------------
+
 export class GridSystem {
   readonly cols: number;
   readonly rows: number;
@@ -22,21 +33,40 @@ export class GridSystem {
     this.rows = rows;
   }
 
-  addUnit(unit: GridUnit): void { this.units.set(unit.id, unit); }
-  removeUnit(id: string): void { this.units.delete(id); }
-  getUnit(id: string): GridUnit | undefined { return this.units.get(id); }
-  getAllUnits(): GridUnit[] { return Array.from(this.units.values()); }
+  // ---------------------------------------------------------------------------
+  // CRUD unités
+  // ---------------------------------------------------------------------------
 
+  addUnit(unit: GridUnit): void {
+    this.units.set(unit.id, unit);
+  }
+
+  removeUnit(id: string): void {
+    this.units.delete(id);
+  }
+
+  getUnit(id: string): GridUnit | undefined {
+    return this.units.get(id);
+  }
+
+  getAllUnits(): GridUnit[] {
+    return Array.from(this.units.values());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Géométrie
+  // ---------------------------------------------------------------------------
+
+  /** Distance de Manhattan entre deux positions. */
   distance(a: GridPosition, b: GridPosition): number {
     return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
   }
 
   isInBounds(pos: GridPosition): boolean {
-    return pos.col >= 0 && pos.col < this.cols &&
-      pos.row >= 0 && pos.row < this.rows;
+    return pos.col >= 0 && pos.col < this.cols
+      && pos.row >= 0 && pos.row < this.rows;
   }
 
-  // Une case est libre si personne n'y est — camp indifférent
   isCellFree(pos: GridPosition): boolean {
     if (!this.isInBounds(pos)) return false;
     for (const unit of this.units.values()) {
@@ -45,16 +75,17 @@ export class GridSystem {
     return true;
   }
 
-  // Cases atteignables — pas de restriction de zone
+  // ---------------------------------------------------------------------------
+  // Déplacement
+  // ---------------------------------------------------------------------------
+
+  /** Retourne toutes les cases atteignables par une unité. */
   getReachableCells(unit: GridUnit): GridPosition[] {
     const result: GridPosition[] = [];
     for (let c = 0; c < this.cols; c++) {
       for (let r = 0; r < this.rows; r++) {
         const target = { col: c, row: r };
-        if (
-          this.distance(unit.pos, target) <= unit.moveRange &&
-          this.isCellFree(target)
-        ) {
+        if (this.distance(unit.pos, target) <= unit.moveRange && this.isCellFree(target)) {
           result.push(target);
         }
       }
@@ -62,23 +93,15 @@ export class GridSystem {
     return result;
   }
 
-  // Cibles adverses à portée — camp opposé uniquement
-  getTargetsInRange(unit: GridUnit): GridUnit[] {
-    return Array.from(this.units.values()).filter(other =>
-      other.id !== unit.id &&
-      other.isHero !== unit.isHero &&
-      this.distance(unit.pos, other.pos) <= 1
-    );
-  }
-
-  // IA : avance vers la cible adverse la plus proche
+  /**
+   * IA simple : avance vers l'ennemi le plus proche en choisissant
+   * la case accessible la plus proche de lui.
+   */
   moveTowardNearest(unit: GridUnit): GridPosition | null {
-    const targets = Array.from(this.units.values())
-      .filter(u => u.isHero !== unit.isHero);
+    const enemies = Array.from(this.units.values()).filter(u => u.isHero !== unit.isHero);
+    if (enemies.length === 0) return null;
 
-    if (targets.length === 0) return null;
-
-    const nearest = targets.reduce((best, t) =>
+    const nearest = enemies.reduce((best, t) =>
       this.distance(unit.pos, t.pos) < this.distance(unit.pos, best.pos) ? t : best
     );
 
@@ -86,31 +109,46 @@ export class GridSystem {
     if (reachable.length === 0) return null;
 
     const best = reachable.reduce((bestCell, cell) =>
-      this.distance(cell, nearest.pos) < this.distance(bestCell, nearest.pos)
-        ? cell : bestCell
+      this.distance(cell, nearest.pos) < this.distance(bestCell, nearest.pos) ? cell : bestCell
     );
 
     unit.pos = best;
     return best;
   }
 
-  // Déplacement manuel (input joueur futur)
+  /** Déplacement manuel vers une position spécifique (usage futur : input joueur). */
   moveUnit(unit: GridUnit, target: GridPosition): boolean {
     const reachable = this.getReachableCells(unit);
-    const canMove = reachable.some(c => c.col === target.col && c.row === target.row);
-    if (canMove) { unit.pos = target; return true; }
-    return false;
+    if (!reachable.some(c => c.col === target.col && c.row === target.row)) return false;
+    unit.pos = target;
+    return true;
   }
 
-  // Retourne les unités adverses à portée d'un skill spécifique
+  // ---------------------------------------------------------------------------
+  // Ciblage
+  // ---------------------------------------------------------------------------
+
+  /** Unités adverses dans un rayon de `range` cases. */
   getTargetsInSkillRange(unit: GridUnit, range: number): GridUnit[] {
     return Array.from(this.units.values()).filter(other =>
-      other.id !== unit.id &&
-      other.isHero !== unit.isHero &&
-      this.distance(unit.pos, other.pos) <= range
+      other.id !== unit.id
+      && other.isHero !== unit.isHero
+      && this.distance(unit.pos, other.pos) <= range
     );
   }
 
+  hasAnyTargetInSkillRange(unit: GridUnit, range: number): boolean {
+    return this.getTargetsInSkillRange(unit, range).length > 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // AOE
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Retourne toutes les cases couvertes par une forme AOE
+   * centrée sur `origin`, filtrées pour ne garder que les cases dans les limites.
+   */
   getAoeCells(origin: GridPosition, aoe: AoeShape): GridPosition[] {
     const cells: GridPosition[] = [];
 
@@ -119,16 +157,12 @@ export class GridSystem {
         const r = aoe.value ?? 1;
         for (let c = 0; c < this.cols; c++) {
           for (let row = 0; row < this.rows; row++) {
-            if (this.distance(origin, { col: c, row }) <= r) {
-              cells.push({ col: c, row });
-            }
+            if (this.distance(origin, { col: c, row }) <= r) cells.push({ col: c, row });
           }
         }
         break;
       }
-
       case 'square': {
-        // ✅ Carré de (value*2+1) x (value*2+1) centré sur l'origine
         const r = aoe.value ?? 1;
         for (let dc = -r; dc <= r; dc++) {
           for (let dr = -r; dr <= r; dr++) {
@@ -137,7 +171,6 @@ export class GridSystem {
         }
         break;
       }
-
       case 'line': {
         const len = aoe.value ?? 2;
         for (let i = 1; i <= len; i++) {
@@ -146,7 +179,6 @@ export class GridSystem {
         }
         break;
       }
-
       case 'cross': {
         const r = aoe.value ?? 1;
         for (let i = 1; i <= r; i++) {
@@ -157,44 +189,42 @@ export class GridSystem {
         }
         break;
       }
-
-      case 'all':
+      case 'all': {
         for (let c = 0; c < this.cols; c++) {
-          for (let row = 0; row < this.rows; row++) {
-            cells.push({ col: c, row });
-          }
+          for (let row = 0; row < this.rows; row++) cells.push({ col: c, row });
         }
         break;
+      }
     }
 
     return cells.filter(c => this.isInBounds(c));
   }
 
-  getAoeTargets(casterUnit: GridUnit, skill: import('../entities/Skill').SkillData): GridUnit[] {
+  /**
+   * Résout les unités adverses touchées par un skill, selon son targetType et sa range.
+   *
+   * - `single` : première cible à portée `skill.range`
+   * - `aoe`    : toutes les unités dans la zone AOE (centrée sur la première cible ou sur le caster si range=0)
+   * - `all`    : toutes les unités adverses vivantes, sans contrainte de range
+   */
+  getAoeTargets(casterUnit: GridUnit, skill: SkillData): GridUnit[] {
     if (skill.targetType === 'all') {
-      // ✅ range: 0 sur 'all' = s'applique depuis la position du caster sans contrainte de range
       return Array.from(this.units.values()).filter(u => u.isHero !== casterUnit.isHero);
     }
 
     if (skill.targetType === 'aoe' && skill.aoe) {
-      // ✅ range: 0 = l'AOE s'applique autour du caster lui-même sans condition de proximité d'ennemi
       const origin = skill.range === 0
-        ? casterUnit.pos                                           // centré sur le caster
-        : this.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos; // centré sur la première cible en range
+        ? casterUnit.pos
+        : this.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos;
 
       const aoeCells = this.getAoeCells(origin, skill.aoe);
       return Array.from(this.units.values()).filter(u =>
-        u.isHero !== casterUnit.isHero &&
-        aoeCells.some(c => c.col === u.pos.col && c.row === u.pos.row)
+        u.isHero !== casterUnit.isHero
+        && aoeCells.some(c => c.col === u.pos.col && c.row === u.pos.row)
       );
     }
 
     // single
     return this.getTargetsInSkillRange(casterUnit, skill.range).slice(0, 1);
-  }
-
-  // Dans GridSystem, ajoute cette méthode utilitaire :
-  hasAnyTargetInRange(unit: GridUnit, range: number): boolean {
-    return this.getTargetsInSkillRange(unit, range).length > 0;
   }
 }

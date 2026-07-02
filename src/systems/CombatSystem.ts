@@ -184,6 +184,11 @@ export class CombatSystem {
   }
 
   private executeHeroSkills(hero: Hero): void {
+    console.log(`[${hero.data.id}] skills:`, hero.skills.map(s => ({
+    id:        s.data.id,
+    remaining: s.getTurnsRemaining(),
+    ready:     s.isReady(),
+  })));
     const ready = hero.skills.filter(s => s.isReady());
     if (ready.length === 0) {
       this.endHeroTurn(hero, null);
@@ -204,7 +209,6 @@ export class CombatSystem {
     usedThisTurn: Set<string>
   ): void {
     if (index >= skills.length || !this.running) {
-      this.onEvent({ type: 'skill_preview_clear' });
       this.endHeroTurn(hero, usedThisTurn);
       return;
     }
@@ -216,9 +220,8 @@ export class CombatSystem {
       .map(t => this.enemies.find(e => e.data.id === t.id && e.isAlive()))
       .filter((e): e is Enemy => e !== undefined);
 
-    if (liveTargets.length === 0) {
-      this.onEvent({ type: 'skill_preview_clear' });
-      this.endHeroTurn(hero, usedThisTurn);
+    if (liveTargets.length === 0 && skill.data.type !== 'support') {
+      this.castSkillsSequentially(hero, skills, index + 1, usedThisTurn);
       return;
     }
 

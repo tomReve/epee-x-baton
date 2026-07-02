@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 
 export const UNIT_SPRITES = {
-  sword:  { key: 'sword',  path: 'assets/sprites/warrior',  frameCount: { idle: 8, walk: 6, attack: 4 } },
-  staff:  { key: 'staff',  path: 'assets/sprites/heal',  frameCount: { idle: 6, walk: 4, attack: 11 } },
+  warrior:  { key: 'warrior',  path: 'assets/sprites/warrior',  frameCount: { idle: 8, walk: 6, attack: 4 } },
+  monk:  { key: 'monk',  path: 'assets/sprites/monk',  frameCount: { idle: 6, walk: 4, attack: 11 } },
   goblin: { key: 'goblin', path: 'assets/sprites/pawn', frameCount: { idle: 8, walk: 6, attack: 4 } },
   boss:   { key: 'boss',   path: 'assets/sprites/pawn',   frameCount: { idle: 8, walk: 6, attack: 4 } },
 } as const;

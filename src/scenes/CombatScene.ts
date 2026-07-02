@@ -7,18 +7,13 @@ import { EventBus } from '../utils/EventBus';
 import { UnitAnimator } from '../entities/UnitAnimator';
 import { TurnSystem } from '../systems/TurnSystem';
 import { SkillData } from '../entities/Skill';
+import { buildCombatSetup } from '../data/combat.factory';
+import { LEVELS_BY_ID } from '../data/levels.data';
+import { DEFAULT_PLAYER_HERO_STATES } from '../data/heroes.data';
 
 // ---------------------------------------------------------------------------
 // Types locaux
 // ---------------------------------------------------------------------------
-
-interface Placement {
-    id: string;
-    isHero: boolean;
-    moveRange: number;
-    col: number;
-    row: number;
-}
 
 interface SkillSlotRefs {
     bg: Phaser.GameObjects.Graphics;
@@ -92,8 +87,15 @@ export class CombatScene extends Phaser.Scene {
 
         this.grid = new GridSystem(this.COLS, this.ROWS);
 
-        this.initEntities();
-        this.initPlacements();
+        const level = LEVELS_BY_ID['forest_1'];
+        const setup = buildCombatSetup(level, DEFAULT_PLAYER_HERO_STATES);
+
+        this.heroes = setup.heroes;
+        this.enemies = setup.enemies;
+
+        for (const unit of [...setup.heroUnits, ...setup.enemyUnits]) {
+            this.grid.addUnit(unit);
+        }
 
         this.drawGrid();
         this.aoePreviewGraphics = this.add.graphics().setDepth(5);
@@ -121,56 +123,6 @@ export class CombatScene extends Phaser.Scene {
             this.isPaused = false;
             this.scene.restart();
         });
-    }
-
-    // ---------------------------------------------------------------------------
-    // Initialisation des données
-    // ---------------------------------------------------------------------------
-
-    private initEntities(): void {
-        const sword = new Hero({
-            id: 'sword', name: 'Sword',
-            hp: 2000, maxHp: 2000, attack: 25, defense: 5, speed: 1200,
-            skills: [
-                { id: 'slash', name: 'Power Slash', damage: 40, cooldownTurns: 3, range: 1, targetType: 'single', type: 'physical' },
-                { id: 'multihit', name: 'Multi Hit', damage: 20, hits: 4, cooldownTurns: 5, range: 1, targetType: 'single', type: 'physical' },
-                { id: 'whirlwind', name: 'Whirlwind', damage: 30, cooldownTurns: 4, range: 1, targetType: 'aoe', aoe: { type: 'radius', value: 2 }, type: 'physical' },
-                { id: 'shockwave', name: 'Shockwave', damage: 25, cooldownTurns: 3, range: 0, targetType: 'aoe', aoe: { type: 'square', value: 1 }, type: 'physical' },
-            ],
-        });
-
-        const staff = new Hero({
-            id: 'staff', name: 'Staff',
-            hp: 1500, maxHp: 1500, attack: 18, defense: 3, speed: 1500,
-            skills: [
-                { id: 'regen', name: 'Regen', heal: 30, cooldownTurns: 1, range: 3, targetType: 'single', type: 'support' },
-                { id: 'meteor', name: 'Meteor', damage: 25, cooldownTurns: 1, range: 0, targetType: 'all', type: 'magic' },
-                { id: 'holycross', name: 'Holy Cross', damage: 25, cooldownTurns: 6, range: 3, targetType: 'aoe', aoe: { type: 'cross', value: 2 }, type: 'magic' },
-                { id: 'nova', name: 'Nova', damage: 35, cooldownTurns: 5, range: 2, targetType: 'aoe', aoe: { type: 'square', value: 2 }, type: 'magic' },
-            ],
-        });
-
-        this.heroes = [sword, staff];
-
-        this.enemies = [
-            new Enemy({ id: 'goblin1', name: 'Goblin', hp: 1000, maxHp: 1000, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 }),
-            new Enemy({ id: 'goblin2', name: 'Goblin', hp: 1000, maxHp: 1000, attack: 14, defense: 2, speed: 1400, xpReward: 30, goldReward: 10 }),
-            new Enemy({ id: 'boss', name: 'Boss', hp: 2000, maxHp: 2000, attack: 22, defense: 8, speed: 1800, xpReward: 100, goldReward: 50 }),
-        ];
-    }
-
-    private initPlacements(): void {
-        const placements: Placement[] = [
-            { id: 'sword', isHero: true, moveRange: 3, col: 1, row: 3 },
-            { id: 'staff', isHero: true, moveRange: 3, col: 0, row: 2 },
-            { id: 'goblin1', isHero: false, moveRange: 3, col: 5, row: 0 },
-            { id: 'goblin2', isHero: false, moveRange: 3, col: 5, row: 3 },
-            { id: 'boss', isHero: false, moveRange: 3, col: 5, row: 2 },
-        ];
-
-        for (const p of placements) {
-            this.grid.addUnit({ id: p.id, isHero: p.isHero, pos: { col: p.col, row: p.row }, moveRange: p.moveRange });
-        }
     }
 
     // ---------------------------------------------------------------------------
@@ -221,10 +173,8 @@ export class CombatScene extends Phaser.Scene {
     // ---------------------------------------------------------------------------
 
     private getSpriteKey(id: string): string {
-        if (id === 'sword') return 'sword';
-        if (id === 'staff') return 'staff';
-        if (id.startsWith('goblin')) return 'goblin';
-        if (id === 'boss') return 'boss';
+        if (id === 'warrior') return 'warrior';
+        if (id === 'monk') return 'monk';
         return 'goblin';
     }
 
@@ -348,6 +298,10 @@ export class CombatScene extends Phaser.Scene {
                 ? casterUnit.pos
                 : this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos;
             return this.grid.getAoeCells(origin, skill.aoe);
+        }
+
+        if (skill.range === 0 && skill.type === 'support') {
+            return [casterUnit.pos];
         }
 
         const target = this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0];

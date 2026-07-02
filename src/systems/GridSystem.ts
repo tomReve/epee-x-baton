@@ -172,6 +172,7 @@ export class GridSystem {
         break;
       }
       case 'line': {
+        cells.push(origin);
         const len = aoe.value ?? 2;
         for (let i = 1; i <= len; i++) {
           cells.push({ col: origin.col + i, row: origin.row });
@@ -180,6 +181,7 @@ export class GridSystem {
         break;
       }
       case 'cross': {
+        cells.push(origin);
         const r = aoe.value ?? 1;
         for (let i = 1; i <= r; i++) {
           cells.push({ col: origin.col + i, row: origin.row });
@@ -201,9 +203,9 @@ export class GridSystem {
   }
 
   /**
-   * Résout les unités adverses touchées par un skill, selon son targetType et sa range.
+   * Résout les unités touchées par un skill, selon son targetType et sa range.
    *
-   * - `single` : première cible à portée `skill.range`
+   * - `single` : première cible à portée `skill.range` ou soi-même pour les soins à range 0
    * - `aoe`    : toutes les unités dans la zone AOE (centrée sur la première cible ou sur le caster si range=0)
    * - `all`    : toutes les unités adverses vivantes, sans contrainte de range
    */
@@ -224,7 +226,13 @@ export class GridSystem {
       );
     }
 
-    // single
-    return this.getTargetsInSkillRange(casterUnit, skill.range).slice(0, 1);
+    if (skill.targetType === 'single') {
+      if (skill.range === 0 && skill.type === 'support') {
+        return [casterUnit];
+      }
+      return this.getTargetsInSkillRange(casterUnit, skill.range).slice(0, 1);
+    }
+
+    return [];
   }
 }

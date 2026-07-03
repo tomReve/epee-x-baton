@@ -158,6 +158,25 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 
 ---
 
+## Phase 6 — Skills ennemis
+
+### Enemy passe d'une attaque hardcodée à un système de skills complet
+- `Enemy.ts` reçoit les mêmes primitives runtime que `Hero.ts` : `skills: Skill[]`, `getReadySkill()`, `tickSkillCooldowns(usedSkillIds)`
+- Suppression de `ENEMY_RANGE = 1` hardcodé et de l'attaque simple dans `CombatSystem.processEnemyTurn`
+
+### processEnemyTurn refondu sur le modèle héros
+- `executeEnemySkills` / `castEnemySkillsSequentially` / `endEnemyTurn`, symétriques à leurs pendants héros
+- Cooldown en tours, `usedThisTurn: Set<string>` exclu du tick, preview AOE avant impact
+
+### Suppression des events `hero_attack` / `enemy_attack`
+- Tous les dégâts (héros comme ennemis) passent par `skill_used`
+
+### Factorisation applySkillImpact
+- Nouvelle méthode privée dans `CombatSystem`, partagée entre `useHeroSkill` et `useEnemySkill`
+- Choix documenté : pas de fusion `processHeroTurn`/`processEnemyTurn` (Hero et Enemy sans supertype commun)
+
+---
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

@@ -1,3 +1,5 @@
+import { Skill, SkillData } from './Skill';
+
 export interface EnemyData {
   id: string;
   name: string;
@@ -6,18 +8,21 @@ export interface EnemyData {
   attack: number;
   defense: number;
   speed: number;
+  skills: SkillData[];
   xpReward: number;
   goldReward: number;
 }
 
 export class Enemy {
   data: EnemyData;
+  skills: Skill[];
   currentHp: number;
   lastAttack: number = 0;
 
   constructor(data: EnemyData) {
     this.data = { ...data };
     this.currentHp = data.maxHp;
+    this.skills = data.skills.map(s => new Skill(s));
   }
 
   isAlive(): boolean { return this.currentHp > 0; }
@@ -35,5 +40,16 @@ export class Enemy {
   attack(now: number): number {
     this.lastAttack = now;
     return this.data.attack;
+  }
+
+  getReadySkill(): Skill | null {
+    return this.skills.find(s => s.isReady()) ?? null;
+  }
+
+  tickSkillCooldowns(usedSkillIds: Set<string> | null): void {
+    for (const skill of this.skills) {
+      if (usedSkillIds?.has(skill.data.id)) continue;
+      skill.tickCooldown();
+    }
   }
 }

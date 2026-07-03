@@ -170,6 +170,23 @@ interface EnemyData {
 }
 ```
 
+### `Enemy` (entité runtime)
+
+```typescript
+class Enemy {
+  data:      EnemyData;
+  skills:    Skill[];
+  currentHp: number;
+
+  isAlive(): boolean
+  takeDamage(amount: number): number
+  getReadySkill(): Skill | null
+  tickSkillCooldowns(usedSkillIds: Set<string> | null): void
+}
+```
+
+Symétrique à `Hero` : mêmes primitives de skills et de cooldown.
+
 ## Grille
 
 ### `GridUnit` (runtime, `systems/GridSystem.ts`)

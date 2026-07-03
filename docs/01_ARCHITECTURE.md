@@ -101,9 +101,14 @@ endHeroTurn(hero, usedSkillIds)
 
 ```
 processEnemyTurn(id)
-  ├── Cible en portée (range 1) → executeEnemyAttack() → finishTurn()
-  └── Pas de cible → moveTowardNearest() → emit 'unit_moved'
-        └── après MOVE_ANIM_DELAY : executeEnemyAttack() ou finishTurn()
+  ├── Cible en portée d'un skill prêt ? → executeEnemySkills()
+  │     └── castEnemySkillsSequentially(skills, index, usedThisTurn)
+  │           ├── preview AOE (400ms)
+  │           ├── useEnemySkill (dégâts)
+  │           └── skill suivant ou endEnemyTurn()
+  └── sinon → déplacement → [cible en portée ?] → executeEnemySkills() ou endEnemyTurn()
+
+endEnemyTurn → tickSkillCooldowns (sauf skills utilisés ce tour) → finishTurn
 ```
 
 ## Constantes de timing (CombatSystem)

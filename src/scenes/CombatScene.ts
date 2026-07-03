@@ -63,7 +63,6 @@ export class CombatScene extends Phaser.Scene {
     private isPaused = false;
 
     private pauseBtn!: Phaser.GameObjects.Container;
-    private restartBtn!: Phaser.GameObjects.Container;
 
     constructor() { super({ key: 'CombatScene' }); }
 
@@ -308,16 +307,6 @@ export class CombatScene extends Phaser.Scene {
         return target ? [target.pos] : [];
     }
 
-    // ---------------------------------------------------------------------------
-    // Floating text
-    // ---------------------------------------------------------------------------
-
-    private showFloatingText(unitId: string, value: number, isHeal: boolean, offsetX = 0): void {
-        const container = this.unitSprites.get(unitId);
-        if (!container) return;
-        this.showFloatingTextAt(container.x, container.y, value, isHeal, offsetX);
-    }
-
     private showFloatingTextAt(x: number, y: number, value: number, isHeal: boolean, offsetX = 0): void {
         const color = isHeal ? '#44ff88' : '#eedba7';
         const strokeColor = '#000000';
@@ -372,37 +361,13 @@ export class CombatScene extends Phaser.Scene {
                 return;
             }
 
-            case 'hero_attack': {
-                this.unitAnimators.get(event.source!)?.play('attack');
-                this.flashSprite(event.target!);
-                const enemy = this.enemies.find(e => e.data.id === event.target);
-                if (enemy) {
-                    this.updateHpBar(enemy.data.id, enemy.currentHp);
-                    this.showFloatingText(enemy.data.id, event.value!, false);
-                }
-                return;
-            }
-
-            case 'enemy_attack': {
-                this.unitAnimators.get(event.source!)?.play('attack');
-                this.flashSprite(event.target!);
-                const hero = this.heroes.find(h => h.data.id === event.target);
-                if (hero) {
-                    this.updateHpBar(hero.data.id, hero.currentHp);
-                    this.showFloatingText(hero.data.id, event.value!, false);
-                }
-                return;
-            }
-
             case 'skill_used': {
                 const hitIndex = event.hitIndex ?? 0;
-                const totalHits = event.totalHits ?? 1;
                 const isHeal = event.target === event.source;
 
                 if (hitIndex === 0) this.unitAnimators.get(event.source!)?.play('attack');
                 this.flashSprite(event.target!);
 
-                // Capture la position avant tout délai (la cible peut mourir entre-temps)
                 const pos = this.unitSprites.get(event.target!);
                 const capturedX = pos?.x ?? 0;
                 const capturedY = pos?.y ?? 0;
@@ -415,8 +380,10 @@ export class CombatScene extends Phaser.Scene {
                     const healer = this.heroes.find(h => h.data.id === event.target);
                     if (healer) this.updateHpBar(healer.data.id, healer.currentHp);
                 } else {
-                    const target = this.enemies.find(e => e.data.id === event.target);
-                    if (target) this.updateHpBar(target.data.id, target.currentHp);
+                    const heroTarget = this.heroes.find(h => h.data.id === event.target);
+                    const enemyTarget = this.enemies.find(e => e.data.id === event.target);
+                    if (heroTarget) this.updateHpBar(heroTarget.data.id, heroTarget.currentHp);
+                    if (enemyTarget) this.updateHpBar(enemyTarget.data.id, enemyTarget.currentHp);
                 }
 
                 return;

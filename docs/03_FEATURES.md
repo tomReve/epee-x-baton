@@ -35,6 +35,13 @@
 - `hits: N` sur un skill → N impacts échelonnés (`HIT_STAGGER = 120ms` entre chaque)
 - Chaque coup émet son propre event `skill_used` avec `hitIndex` et `totalHits`
 
+#### Skills ennemis
+- Les ennemis disposent des mêmes primitives runtime que les héros : `skills: Skill[]`, cooldowns en tours, `usedThisTurn` exclu du tick
+- `processEnemyTurn` suit le même flux que `processHeroTurn` : cible en portée d'un skill prêt → sinon déplacement → re-check → skills ou fin de tour
+- Ennemis normaux : 2 skills équipés (`enemies.data.ts`) ; boss : 3 skills (dont un ulti)
+- Preview AOE, multi-hit et re-ciblage après kill s'appliquent aux skills ennemis comme aux skills héros
+- Le calcul d'impact (dégâts, multi-hit, stagger) est factorisé entre héros et ennemis via `applySkillImpact` dans `CombatSystem`
+
 ### Système de grille
 
 #### Grille partagée
@@ -155,14 +162,6 @@
 - Scalage des stats héros : `+8% par niveau` sur HP/ATK/DEF (vitesse inchangée)
 - Scalage des stats ennemis : `baseStats * scaleFactor`
 - Id unique par ennemi : `${enemyId}_${index}` (permet plusieurs goblins dans le même niveau)
-
-## Features en cours / partielles
-
-### Skills ennemis
-- Les ennemis ont des skills définis dans leur `EnemyDefinition`
-- La logique d'utilisation des skills ennemis n'est **pas encore implémentée** côté `CombatSystem`
-- `processEnemyTurn` utilise encore une attaque simple hardcodée (range 1)
-- `ENEMY_RANGE = 1` est une constante temporaire dans `processEnemyTurn`
 
 ## Features non implémentées (roadmap)
 

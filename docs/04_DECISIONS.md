@@ -147,3 +147,18 @@
 
 ### Frame 0 explicite à la création du sprite
 **Raison** : sans frame initiale, Phaser affiche un carré barré pendant le split-second avant que `animator.play('idle')` ne soit appelé.
+
+---
+
+## Pas de supertype commun Hero/Enemy pour les skills ennemis
+
+**Contexte** : implémentation des skills ennemis (symétrique au système héros). `processHeroTurn` et `processEnemyTurn` partagent la même structure logique (cible en portée ? sinon déplacement → skills → fin de tour).
+
+**Décision** : dupliquer les méthodes de flux (`processEnemyTurn`, `executeEnemySkills`, `castEnemySkillsSequentially`, `endEnemyTurn`) plutôt que de fusionner avec leurs pendants héros. Seul le calcul d'impact pur (dégâts, multi-hit, stagger) est factorisé via `applySkillImpact<T extends DamageableUnit>`.
+
+**Raisons** :
+- `Hero` et `Enemy` n'ont pas de supertype commun ; les fusionner nécessiterait une interface `CombatUnit` non demandée et non documentée
+- Les listes d'alliés/cibles (`this.heroes` / `this.enemies`) diffèrent structurellement selon le camp qui joue
+- `handleDeath(id, isHero)` distingue déjà les deux camps pour les conditions de victoire — asymétrie déjà existante et assumée
+
+**Alternative possible** : introduire `CombatUnit` (skills, attack, isAlive, heal?) implémentée par `Hero` et `Enemy`, pour unifier `processHeroTurn`/`processEnemyTurn` en une seule méthode paramétrée par camp. Non fait — refactor d'architecture à trancher explicitement si la duplication devient un problème réel (ex: 3e camp, mécaniques divergentes).

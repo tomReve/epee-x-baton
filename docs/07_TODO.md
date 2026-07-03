@@ -2,12 +2,6 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Skills ennemis
-- [ ] Implémenter `processEnemySkillTurn` dans `CombatSystem` sur le modèle de `processHeroTurn`
-- [ ] Supprimer `ENEMY_RANGE = 1` hardcodé dans `processEnemyTurn`
-- [ ] Les ennemis normaux utilisent 2 skills, les boss 3 (dont un ulti)
-- [ ] Appliquer le même système de cooldown en tours que les héros
-
 ### Déplacement après attaque dans le même tour
 - [ ] Un héros peut se déplacer **avant et/ou après** ses skills dans le même tour
 - [ ] Structure du tour : [move?] → [skills] → [move?]

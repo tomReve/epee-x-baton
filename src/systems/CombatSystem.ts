@@ -4,18 +4,12 @@ import { Skill, SkillData } from '../entities/Skill';
 import { GridSystem, GridUnit } from './GridSystem';
 import { TurnSystem } from './TurnSystem';
 
-// ---------------------------------------------------------------------------
-// Types publics
-// ---------------------------------------------------------------------------
-
 export type CombatMode = 'eliminate' | 'damage_race';
 
 export interface CombatEvent {
   type:
     | 'turn_start'
     | 'unit_moved'
-    | 'hero_attack'
-    | 'enemy_attack'
     | 'skill_used'
     | 'hero_died'
     | 'enemy_died'
@@ -42,30 +36,16 @@ export interface CombatEvent {
 
 export type CombatEventCallback = (event: CombatEvent) => void;
 
-// ---------------------------------------------------------------------------
-// Constantes
-// ---------------------------------------------------------------------------
+interface DamageableUnit {
+  data:      { id: string };
+  isAlive(): boolean;
+  takeDamage(amount: number): number;
+}
 
-const TURN_DELAY        = 600;  // ms entre chaque tour
-const PREVIEW_DELAY     = 400;  // ms d'affichage de la preview AOE avant l'impact
-const HIT_STAGGER       = 120;  // ms entre chaque coup (multi-hit)
-const TARGET_STAGGER    = 150;  // ms entre chaque cible (AOE)
-
-// ---------------------------------------------------------------------------
-// CombatSystem
-//
-// Responsabilité : orchestration du déroulement du combat.
-// Ne contient aucune logique Phaser ni d'affichage.
-// Communique avec la scène exclusivement via CombatEventCallback.
-//
-// Flux d'un tour héros :
-//   processHeroTurn → [déplacement?] → executeHeroSkills
-//     → castSkillsSequentially (preview → useHeroSkill → suivant)
-//     → endHeroTurn (tick cooldowns) → finishTurn (next turn)
-//
-// Flux d'un tour ennemi :
-//   processEnemyTurn → [déplacement?] → executeEnemyAttack → finishTurn
-// ---------------------------------------------------------------------------
+const TURN_DELAY        = 600;
+const PREVIEW_DELAY     = 400;
+const HIT_STAGGER       = 120;
+const TARGET_STAGGER    = 150;
 
 export class CombatSystem {
   private readonly heroes:    Hero[];
@@ -97,10 +77,6 @@ export class CombatSystem {
     this.maxRounds = maxRounds;
   }
 
-  // ---------------------------------------------------------------------------
-  // API publique
-  // ---------------------------------------------------------------------------
-
   start(): void {
     this.running = true;
     this.onEvent({ type: 'round_start', round: 0 });
@@ -112,10 +88,6 @@ export class CombatSystem {
     if (this.timeoutId) clearTimeout(this.timeoutId);
   }
 
-  // ---------------------------------------------------------------------------
-  // Orchestration des tours
-  // ---------------------------------------------------------------------------
-
   private scheduleTurn(delay: number): void {
     this.timeoutId = setTimeout(() => this.processTurn(), delay);
   }
@@ -125,7 +97,6 @@ export class CombatSystem {
 
     const unit = this.turns.current();
 
-    // Unité morte ou absente : on passe silencieusement
     if (!unit || !unit.isAlive()) {
       this.turns.next();
       this.scheduleTurn(100);
@@ -141,9 +112,6 @@ export class CombatSystem {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Tour héros
-  // ---------------------------------------------------------------------------
 
   private processHeroTurn(id: string): void {
     const hero      = this.heroes.find(h => h.data.id === id)!;
@@ -159,7 +127,6 @@ export class CombatSystem {
       return;
     }
 
-    // Aucune cible en portée — déplacement
     const from = { ...gridUnit.pos };
     const to   = this.grid.moveTowardNearest(gridUnit);
 
@@ -184,11 +151,6 @@ export class CombatSystem {
   }
 
   private executeHeroSkills(hero: Hero): void {
-    console.log(`[${hero.data.id}] skills:`, hero.skills.map(s => ({
-    id:        s.data.id,
-    remaining: s.getTurnsRemaining(),
-    ready:     s.isReady(),
-  })));
     const ready = hero.skills.filter(s => s.isReady());
     if (ready.length === 0) {
       this.endHeroTurn(hero, null);
@@ -197,11 +159,6 @@ export class CombatSystem {
     this.castSkillsSequentially(hero, ready, 0, new Set());
   }
 
-  /**
-   * Enchaîne les skills prêts un par un.
-   * Chaque skill attend la fin de l'animation du précédent avant de se lancer.
-   * `usedThisTurn` accumule les ids des skills castés pour exclure leur tick en fin de tour.
-   */
   private castSkillsSequentially(
     hero:         Hero,
     skills:       Skill[],
@@ -225,7 +182,6 @@ export class CombatSystem {
       return;
     }
 
-    // Preview AOE avant l'impact
     this.onEvent({ type: 'skill_preview', source: hero.data.id, skillData: skill.data });
 
     setTimeout(() => {
@@ -243,46 +199,19 @@ export class CombatSystem {
     }, PREVIEW_DELAY);
   }
 
-  /**
-   * Applique les dégâts / soins d'un skill sur ses cibles.
-   * Retourne le délai total avant que tous les impacts soient résolus.
-   */
   private useHeroSkill(hero: Hero, skill: Skill, targets: Enemy[]): number {
     skill.use();
     this.onEvent({ type: 'cooldowns_updated', source: hero.data.id, skillId: skill.data.id });
 
-    const hits      = skill.data.hits ?? 1;
-    let totalDelay  = 0;
+    let totalDelay = 0;
 
-    // Dégâts — chaque cible reçoit ses coups avec un décalage visuel
     if (skill.data.damage) {
-      targets.forEach((target, targetIndex) => {
-        const targetDelay = targetIndex * TARGET_STAGGER;
-
-        for (let i = 0; i < hits; i++) {
-          const hitDelay = targetDelay + i * HIT_STAGGER;
-
-          setTimeout(() => {
-            if (!this.running || !target.isAlive()) return;
-            const dmg = target.takeDamage((skill.data.damage ?? 0) + hero.data.attack);
-            this.onEvent({
-              type:      'skill_used',
-              source:    hero.data.id,
-              target:    target.data.id,
-              value:     dmg,
-              skillName: skill.data.name,
-              hitIndex:  i,
-              totalHits: hits,
-            });
-            if (!target.isAlive()) this.handleDeath(target.data.id, false);
-          }, hitDelay);
-
-          totalDelay = Math.max(totalDelay, hitDelay);
-        }
-      });
+      totalDelay = this.applySkillImpact(
+        hero.data.attack, skill, targets, hero.data.id,
+        (id) => this.handleDeath(id, false)
+      );
     }
 
-    // Soin — appliqué sur le caster
     if (skill.data.heal) {
       hero.heal(skill.data.heal);
       this.onEvent({
@@ -299,42 +228,32 @@ export class CombatSystem {
     return totalDelay + this.ATTACK_ANIM_DELAY;
   }
 
-  /**
-   * Termine le tour d'un héros :
-   * 1. Tick les cooldowns de tous ses skills SAUF ceux utilisés ce tour
-   * 2. Émet cooldowns_updated pour rafraîchir l'UI
-   * 3. Passe au tour suivant
-   */
+
   private endHeroTurn(hero: Hero, usedSkillIds: Set<string> | null): void {
     hero.tickSkillCooldowns(usedSkillIds);
     this.onEvent({ type: 'cooldowns_updated', source: hero.data.id });
     this.finishTurn();
   }
 
-  // ---------------------------------------------------------------------------
-  // Tour ennemi
-  // ---------------------------------------------------------------------------
-
   private processEnemyTurn(id: string): void {
     const enemy    = this.enemies.find(e => e.data.id === id)!;
     const gridUnit = this.grid.getUnit(id)!;
-    const now      = Date.now();
+    const ready    = enemy.skills.filter(s => s.isReady());
 
-    // Utilise une range fixe de 1 pour les ennemis (pas encore de système de skills ennemis)
-    const ENEMY_RANGE = 1;
-    let targets = this.grid.getTargetsInSkillRange(gridUnit, ENEMY_RANGE);
+    const hasTarget = ready.some(skill =>
+      this.grid.getAoeTargets(gridUnit, skill.data).length > 0
+    );
 
-    if (targets.length > 0) {
-      this.executeEnemyAttack(enemy, targets, now);
+    if (hasTarget) {
+      this.executeEnemySkills(enemy);
       return;
     }
 
-    // Déplacement vers la cible la plus proche
     const from = { ...gridUnit.pos };
     const to   = this.grid.moveTowardNearest(gridUnit);
 
     if (!to) {
-      this.finishTurn();
+      this.endEnemyTurn(enemy, null);
       return;
     }
 
@@ -342,39 +261,124 @@ export class CombatSystem {
 
     setTimeout(() => {
       if (!this.running) return;
-      targets = this.grid.getTargetsInSkillRange(gridUnit, ENEMY_RANGE);
-      if (targets.length > 0) {
-        this.executeEnemyAttack(enemy, targets, now);
+      const hasTargetAfterMove = ready.some(skill =>
+        this.grid.getAoeTargets(gridUnit, skill.data).length > 0
+      );
+      if (hasTargetAfterMove) {
+        this.executeEnemySkills(enemy);
       } else {
-        this.finishTurn();
+        this.endEnemyTurn(enemy, null);
       }
     }, this.MOVE_ANIM_DELAY);
   }
 
-  private executeEnemyAttack(enemy: Enemy, targets: GridUnit[], now: number): void {
-    const heroTarget = this.heroes.find(h =>
-      h.isAlive() && targets.some(t => t.id === h.data.id)
-    );
+  private executeEnemySkills(enemy: Enemy): void {
+    const ready = enemy.skills.filter(s => s.isReady());
+    if (ready.length === 0) {
+      this.endEnemyTurn(enemy, null);
+      return;
+    }
+    this.castEnemySkillsSequentially(enemy, ready, 0, new Set());
+  }
 
-    if (!heroTarget) {
-      this.finishTurn();
+  private castEnemySkillsSequentially(
+    enemy:        Enemy,
+    skills:       Skill[],
+    index:        number,
+    usedThisTurn: Set<string>
+  ): void {
+    if (index >= skills.length || !this.running) {
+      this.endEnemyTurn(enemy, usedThisTurn);
       return;
     }
 
-    const dmg = heroTarget.takeDamage(enemy.attack(now));
-    this.onEvent({ type: 'enemy_attack', source: enemy.data.id, target: heroTarget.data.id, value: dmg });
-    if (!heroTarget.isAlive()) this.handleDeath(heroTarget.data.id, true);
+    const skill    = skills[index];
+    const gridUnit = this.grid.getUnit(enemy.data.id)!;
+
+    const liveTargets = this.grid.getAoeTargets(gridUnit, skill.data)
+      .map(t => this.heroes.find(h => h.data.id === t.id && h.isAlive()))
+      .filter((h): h is Hero => h !== undefined);
+
+    if (liveTargets.length === 0) {
+      this.castEnemySkillsSequentially(enemy, skills, index + 1, usedThisTurn);
+      return;
+    }
+
+    this.onEvent({ type: 'skill_preview', source: enemy.data.id, skillData: skill.data });
 
     setTimeout(() => {
-      if (this.running) this.finishTurn();
-    }, this.ATTACK_ANIM_DELAY);
+      if (!this.running) return;
+
+      usedThisTurn.add(skill.data.id);
+      const animDelay = this.useEnemySkill(enemy, skill, liveTargets);
+
+      this.onEvent({ type: 'skill_preview_clear' });
+
+      setTimeout(() => {
+        if (!this.running) return;
+        this.castEnemySkillsSequentially(enemy, skills, index + 1, usedThisTurn);
+      }, animDelay);
+    }, PREVIEW_DELAY);
   }
 
-  // ---------------------------------------------------------------------------
-  // Fin de tour & mort
-  // ---------------------------------------------------------------------------
+  private useEnemySkill(enemy: Enemy, skill: Skill, targets: Hero[]): number {
+    skill.use();
+    this.onEvent({ type: 'cooldowns_updated', source: enemy.data.id, skillId: skill.data.id });
 
-  /** Point d'entrée unique pour passer au tour suivant. */
+    if (!skill.data.damage) return this.ATTACK_ANIM_DELAY;
+
+    const totalDelay = this.applySkillImpact(
+      enemy.data.attack, skill, targets, enemy.data.id,
+      (id) => this.handleDeath(id, true)
+    );
+
+    return totalDelay + this.ATTACK_ANIM_DELAY;
+  }
+
+  private endEnemyTurn(enemy: Enemy, usedSkillIds: Set<string> | null): void {
+    enemy.tickSkillCooldowns(usedSkillIds);
+    this.onEvent({ type: 'cooldowns_updated', source: enemy.data.id });
+    this.finishTurn();
+  }
+
+  private applySkillImpact<T extends DamageableUnit>(
+    attackerAttack: number,
+    skill:          Skill,
+    targets:        T[],
+    sourceId:       string,
+    onTargetDeath:  (id: string) => void
+  ): number {
+    const hits = skill.data.hits ?? 1;
+    let totalDelay = 0;
+
+    targets.forEach((target, targetIndex) => {
+      const targetDelay = targetIndex * TARGET_STAGGER;
+
+      for (let i = 0; i < hits; i++) {
+        const hitDelay = targetDelay + i * HIT_STAGGER;
+
+        setTimeout(() => {
+          if (!this.running || !target.isAlive()) return;
+          const dmg = target.takeDamage((skill.data.damage ?? 0) + attackerAttack);
+          this.onEvent({
+            type:      'skill_used',
+            source:    sourceId,
+            target:    target.data.id,
+            value:     dmg,
+            skillName: skill.data.name,
+            hitIndex:  i,
+            totalHits: hits,
+          });
+          if (!target.isAlive()) onTargetDeath(target.data.id);
+        }, hitDelay);
+
+        totalDelay = Math.max(totalDelay, hitDelay);
+      }
+    });
+
+    return totalDelay;
+  }
+
   private finishTurn(): void {
     if (!this.running) return;
 

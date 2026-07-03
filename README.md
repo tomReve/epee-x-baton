@@ -11,6 +11,7 @@ npm run dev
 
 ## Structure
 
+```
 src/
 ├── main.ts          # Point d'entrée, config Phaser
 ├── scenes/           # BootScene (chargement), CombatScene (rendu — pas de logique de combat)
@@ -18,6 +19,7 @@ src/
 ├── entities/          # Hero, Enemy, Skill, UnitAnimator
 ├── data/             # Catalogues statiques (skills, héros, ennemis, niveaux) + factory
 └── utils/            # EventBus
+```
 
 ## Documentation
 

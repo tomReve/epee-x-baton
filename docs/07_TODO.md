@@ -2,31 +2,24 @@
 
 ## Priorité haute (prochaines sessions)
 
+### Décision architecture Hero/Enemy (bloquant pour la suite)
+- [ ] Trancher : classe/interface commune (`CombatUnit`) vs duplication contrôlée maintenue
+- [ ] Impacte directement : effets de statut, shield, ciblage intelligent, crit/miss
+- [ ] À faire AVANT d'attaquer les effets de statut pour éviter de dupliquer puis défaire
+
 ### Déplacement après attaque dans le même tour
 - [ ] Un héros ou un ennemi peut se déplacer **avant et/ou après** ses skills dans le même tour
 - [ ] Structure du tour : [move?] → [skills] → [move?]
 - [ ] Permet d'attaquer un ennemi, de le finir, puis de se repositionner pour le suivant
 - [ ] Implique de refactoriser `processXTurn` pour séparer les phases de déplacement et d'attaque
-- [ ] Peut-être est-ce le moment de réfactoriser Hero et Ennemy, pour les combats et les statistiques ils suivent plutôt la même logique. C'est en dehors des combats qu'ils sera différents (progression de heros que les ennemis n'ont pas). Avoir une classe parente ? (fais mois un état des lieux de leurs différences à date)
+- [ ] À faire AVANT les effets de statut type Stun/Frozen (même zone de code, flux de tour)
 
-### Ciblage intelligent
-- [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
-- [ ] Cibler le plus faible (pour finir rapidement)
-- [ ] Cibler le plus dangereux (celui avec le plus d'ATK)
-- [ ] Configurable par skill (exemple : monocible avec gros dégat focus le monstre avec le plus de HP, sort pour cibler les ennemis avec le moins / le plus de PV)
-
-## Priorité moyenne
-
-### Skills avec déplacement ou crownd crontrol
-- [ ] Implémenter la possibilité d'avoir des skills qui déplace le personnage avant ou après l'attaque (dash, jump, teleportation, etc)
-- [ ] Implémenter la possibilité d'avoir des skills qui déplace les ennemis (attirer, pousser, regrouper)
-
-### Effets de statut / effet de sort spéciaux
+### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)
 - [ ] Burn (case appliquant des dégats sous certaines conditions)
-- [ ] Stun / Frozen (passe le tour, empêche certaines actions)
-- [ ] Shield (absorption de dégâts)
-- [ ] Taunt / Fear (les ennemis focus / evite le joueur qui à taunter / fear)
+- [ ] Stun / Frozen (passe le tour, empêche certaines actions) — dépend du refactor "déplacement avant/après skill"
+- [ ] Shield (absorption de dégâts) — dépend de la décision Hero/Enemy (touche `takeDamage()`)
+- [ ] Taunt / Fear (les ennemis focus / evite le joueur qui à taunter / fear) — à coordonner avec "ciblage intelligent"
 - [ ] Buff/Debuff (améliore / diminue les statistiques du joueur (attaque / def / crit / speed / mouvement / etc))
 - [ ] Dispel (retire les status)
 - [ ] Lifesteal (soigne le héros de X% des dégats subits, ignore les dégats appliqués aux shields)
@@ -34,10 +27,24 @@
 - [ ] Shield break (dommage supplémentaire sur les boucliers)
 - [ ] Contre (renvoi de dégats)
 - [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
+- [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
 
-### Probabilité d'évènement : 
+### Ciblage intelligent
+- [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
+- [ ] Cibler le plus faible (pour finir rapidement)
+- [ ] Cibler le plus dangereux (celui avec le plus d'ATK)
+- [ ] Configurable par skill (exemple : monocible avec gros dégat focus le monstre avec le plus de HP, sort pour cibler les ennemis avec le moins / le plus de PV)
+- [ ] À regrouper avec "ciblage côté allié" ci-dessous (même zone : `GridSystem`/`getAoeTargets`)
+
+## Priorité moyenne
+
+### Skills avec déplacement ou crowd control
+- [ ] Implémenter la possibilité d'avoir des skills qui déplace le personnage avant ou après l'attaque (dash, jump, teleportation, etc)
+- [ ] Implémenter la possibilité d'avoir des skills qui déplace les ennemis (attirer, pousser, regrouper)
+
+### Probabilité d'évènement
 - [ ] Chance d'application (les effets de status peuvent avoir une chance d'application entre 1 et 100%)
-- [ ] Chance de skill en chaine (chance de déclencher x fois des dégats )
+- [ ] Chance de skill en chaine (chance de déclencher x fois des dégats)
 
 ### Ciblage côté allié (heal/buff)
 - [ ] `targetSide: 'enemy' | 'ally'` dans `SkillData`
@@ -50,26 +57,29 @@
 - [ ] `missRate?: number` sur `EnemyDefinition`
 - [ ] Floating text spécial pour les crits (taille plus grande, couleur différente)
 - [ ] Reflexions sur d'autres stats à implémenter
-
-### Modification du calcul des dégats, effet de statut et buff
-- [ ] Développer un system de calcul des dégats plus poussé
-- [ ] Dégats de compétence en fonction des statistiques + valeur flat (attaque, maitrise physique, maitrise élémentaire)
-- [ ] Scalling des sorts en fonction d'une statistique
-- [ ] Calcul plus complexe que juste utilisé les valeurs flats (remplacer les formules comme dégats - défense = dégats appliqués)
+- [ ] À faire avant la refonte du calcul de dégâts (ingrédient de cette refonte)
 
 ### Skills élémentaires
 - [ ] Les skills élémentaires ont différent type (feu, eau, air, lumière, ténèbre)
 - [ ] Certains ennemies sont plus résistant à un élément et plus faible à un autre
 - [ ] Les héros peuvent renforcer leur affinité avec ou plusieurs éléments et augmenter leur résistance avec un ou plusieurs éléments
 
+### Modification du calcul des dégats, effet de statut et buff
+- [ ] Développer un system de calcul des dégats plus poussé
+- [ ] Dégats de compétence en fonction des statistiques + valeur flat (attaque, maitrise physique, maitrise élémentaire)
+- [ ] Scalling des sorts en fonction d'une statistique
+- [ ] Calcul plus complexe que juste utilisé les valeurs flats (remplacer les formules comme dégats - défense = dégats appliqués)
+- [ ] Regroupe les besoins de crit/miss + éléments : à faire une seule fois avec tous les ingrédients connus, pas en plusieurs passes
+
 ### Skills unique de début de combat
-- [] Pouvoir créer des skills qui ne se déclenche qu'une fois au début du combat (effet de status la plupart du temps)
+- [ ] Pouvoir créer des skills qui ne se déclenche qu'une fois au début du combat (effet de status la plupart du temps)
 
 ### Système de progression
 - [ ] XP gagnée après combat (selon `xpReward` des ennemis vaincus)
 - [ ] Niveau des héros : `+8% stats` par niveau (formule déjà dans `combat.factory.ts`)
 - [ ] Sauvegarde `PlayerHeroState` dans localStorage
 - [ ] Écran de résultat post-combat avec XP et gold gagnés
+- [ ] Indépendant du reste — peut se faire en parallèle à tout moment
 
 ### Sélection de skills avant combat
 - [ ] UI de sélection des 4 skills équipés parmi `HeroDefinition.availableSkills`
@@ -81,19 +91,25 @@
 - [ ] `PlayerHeroState.equipment: EquipmentId[]` déjà prévu
 - [ ] Bonus de stats ou de skills
 
+### Tests unitaires (remonté de priorité basse)
+- [ ] Tests sur `GridSystem.getAoeTargets` — zone touchée par quasi toutes les features à venir (stun, shield, ciblage intelligent)
+- [ ] Tests sur le système de cooldown — historique de bug déjà rencontré (cooldown qui se relançait)
+- [ ] Tests sur `TurnSystem` (ordre, gestion des morts)
+- [ ] À faire avant d'attaquer les effets de statut pour sécuriser une base de non-régression
+
 ## Priorité basse
 
-### Définir l'identité des classe et une bonne base de skills
-- [] Réflexion sur l'identité des classes
-- [] Réflexion et création d'une bonne liste de skills pour chaque class correspondant à son rôle
+### Définir l'identité des classes et une bonne base de skills
+- [ ] Réflexion sur l'identité des classes
+- [ ] Réflexion et création d'une bonne liste de skills pour chaque classe correspondant à son rôle
 
 ### Classes évolutives
-- [] Chaque classes à plusieurs niveau de classes (exemple: archer -> tirreur d'élite -> Arbalétrier)
-- [] Chaque niveau de classe débloque de nouveaux skills / charmes
-- [] Les niveaux de classes se débloquent en remplissant certaines conditions
+- [ ] Chaque classe à plusieurs niveaux de classe (exemple: archer → tireur d'élite → arbalétrier)
+- [ ] Chaque niveau de classe débloque de nouveaux skills / charmes
+- [ ] Les niveaux de classe se débloquent en remplissant certaines conditions
 
 ### Skills passifs (charmes)
-- [] Les monstres et héros peuvent avoir X skills passifs en plus des skills actifs
+- [ ] Les monstres et héros peuvent avoir X skills passifs en plus des skills actifs
 
 ### MapScene — Exploration du monde
 - [ ] Carte du monde avec zones (forêt, donjon, etc.)
@@ -127,10 +143,10 @@
 - [ ] Chat serveur (décoratif, style Sword x Staff)
 - [ ] Indicateur de tour actif sur le sprite de l'unité (cercle lumineux au sol)
 
-### Technique
-- [ ] Tests unitaires sur `GridSystem` (calculs AOE, pathfinding)
-- [ ] Tests unitaires sur `TurnSystem` (ordre, gestion des morts)
-- [ ] Tests unitaires sur le système de cooldown
+### Contrôle de vitesse de combat
+- [ ] Vitesse x2 / x4 pour accélérer les combats longs (standard du genre auto-battler)
+
+### Hot-reload
 - [ ] Hot-reload des données JSON sans restart du serveur de dev
 
 ## À confirmer
@@ -140,3 +156,5 @@
 - [ ] **Multi-héros** : combien de héros max dans une équipe ? (actuellement 2, données prévoient 4 classes)
 - [ ] **Mort des héros** : les héros sont "permanents" — mais peuvent-ils être KO temporairement en combat et se relever ?
 - [ ] **Gold** : à quoi servira-t-il ? Équipements ? Upgrades de skills ?
+- [ ] **Statuts persistants** : un buff/debuff peut-il survivre à la fin d'un combat, ou tout est reset systématiquement ?
+- [ ] **Resize mobile** : le resize restart actuellement toute la scène (`scale.on('resize') → scene.restart()`) — acceptable si rotation d'écran en cours de combat sur mobile/PWA, ou à traiter différemment ?

@@ -175,6 +175,26 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 - Nouvelle méthode privée dans `CombatSystem`, partagée entre `useHeroSkill` et `useEnemySkill`
 - Choix documenté : pas de fusion `processHeroTurn`/`processEnemyTurn` (Hero et Enemy sans supertype commun)
 
+## Phase 7 — Unification Hero/Enemy
+
+### Classe commune CombatUnit
+- Nouvelle classe abstraite `entities/CombatUnit.ts` : porte `data`, `skills`, `currentHp`, `isAlive()`, `takeDamage()`, `heal()`, `getReadySkill()`, `tickSkillCooldowns()`
+- `Hero` et `Enemy` allégés, héritent de `CombatUnit`
+- Renverse la décision documentée en Phase 6 ("pas de supertype commun") — justifiée par l'absence de divergence runtime réelle entre les deux camps
+
+### Retrait xpReward/goldReward d'Enemy
+- Champs jamais utilisés dans le code, retirés d'`EnemyDefinition`, `enemies.data.ts`, `combat.factory.ts`
+- Seront réintroduits plus tard au niveau `LevelDefinition`, avec composante aléatoire
+
+### Fusion complète CombatSystem
+- `processHeroTurn`/`processEnemyTurn` → `processUnitTurn` unique, générique sur `CombatUnit`
+- Idem pour `executeSkills`, `castSkillsSequentially`, `useSkill`, `endTurn`, `applySkillImpact`, `handleDeath`
+- Le seul point restant sensible au camp : `processTurn()`, via `TurnUnit.isHero`
+- `hero_died`/`enemy_died` fusionnés en `unit_died` (traitement identique des deux côtés, distinction inutilisée)
+
+### Code mort supprimé
+- `lastAttack`, `canAttack()`, `attack()` retirés de `Hero`/`Enemy` (inutilisés depuis la suppression de l'attaque de base en Phase 3)
+
 ---
 
 ## Bugs résolus notables

@@ -76,7 +76,64 @@ interface AoeShape {
 }
 ```
 
-## Héros
+## Unités de combat
+
+### `CombatUnit` (classe abstraite, `entities/CombatUnit.ts`)
+
+Porte tout l'état et les comportements runtime de combat, communs à `Hero` et `Enemy`. Introduite pour éliminer la duplication qui existait entre les deux entités (voir `04_DECISIONS.md`).
+
+```typescript
+interface BaseUnitData {
+  id:      string;
+  name:    string;
+  hp:      number;
+  maxHp:   number;
+  attack:  number;
+  defense: number;
+  speed:   number;
+  skills:  SkillData[];
+}
+
+abstract class CombatUnit {
+  abstract data: BaseUnitData;
+  skills:    Skill[];
+  currentHp: number;
+
+  isAlive(): boolean
+  takeDamage(amount: number): number    // retourne les dégâts réels (après defense)
+  heal(amount: number): void
+  getReadySkill(): Skill | null         // premier skill isReady()
+  tickSkillCooldowns(usedSkillIds: Set<string> | null): void
+}
+```
+
+`heal()` est disponible sur `CombatUnit`, donc aussi sur `Enemy`, en anticipation d'un futur skill de soin ennemi — aucun skill ennemi actuel n'en dispose.
+
+### `Hero` (entité runtime, `entities/Hero.ts`)
+
+```typescript
+interface HeroData extends BaseUnitData {}
+
+class Hero extends CombatUnit {
+  data: HeroData;
+}
+```
+
+Aucune méthode propre au-delà de `CombatUnit` à ce stade. La distinction avec `Enemy` se joue au niveau des données statiques (`HeroDefinition`) et de la progression joueur (`PlayerHeroState`), pas au niveau du runtime de combat.
+
+### `Enemy` (entité runtime, `entities/Enemy.ts`)
+
+```typescript
+interface EnemyData extends BaseUnitData {}
+
+class Enemy extends CombatUnit {
+  data: EnemyData;
+}
+```
+
+`id` unique par instance en combat : `${enemyId}_${index}` (permet plusieurs goblins dans le même niveau). Pas de `xpReward`/`goldReward` sur `EnemyData` (retirés — voir `04_DECISIONS.md` et section Ennemis ci-dessous).
+
+## Héros — couches statiques et progression
 
 ### `HeroDefinition` (données statiques, `heroes.data.ts`)
 
@@ -104,88 +161,23 @@ interface PlayerHeroState {
 }
 ```
 
-### `HeroData` (données runtime, `entities/Hero.ts`)
-
-```typescript
-interface HeroData {
-  id:       string;
-  name:     string;
-  hp:       number;
-  maxHp:    number;
-  attack:   number;
-  defense:  number;
-  speed:    number;
-  skills:   SkillData[];    // les 4 skills équipés, instanciés en Skill[]
-}
-```
-
-### `Hero` (entité runtime)
-
-```typescript
-class Hero {
-  data:      HeroData;
-  skills:    Skill[];
-  currentHp: number;
-
-  isAlive(): boolean
-  takeDamage(amount: number): number    // retourne les dégâts réels (après defense)
-  heal(amount: number): void
-  getReadySkill(): Skill | null         // premier skill isReady()
-  tickSkillCooldowns(usedSkillIds: Set<string> | null): void
-}
-```
-
-## Ennemis
+## Ennemis — couche statique
 
 ### `EnemyDefinition` (données statiques, `enemies.data.ts`)
 
 ```typescript
 interface EnemyDefinition {
-  id:         string;
-  name:       string;
-  type:       EnemyType;
-  baseStats:  BaseStats;
-  moveRange:  number;
-  skills:     string[];       // 2 pour normal, 3 pour boss
-  spriteKey:  string;
-  xpReward:   number;
-  goldReward: number;
+  id:        string;
+  name:      string;
+  type:      EnemyType;
+  baseStats: BaseStats;
+  moveRange: number;
+  skills:    string[];       // 2 pour normal, 3 pour boss
+  spriteKey: string;
 }
 ```
 
-### `EnemyData` (données runtime, `entities/Enemy.ts`)
-
-```typescript
-interface EnemyData {
-  id:         string;          // unique : ${enemyId}_${index}
-  name:       string;
-  hp:         number;
-  maxHp:      number;
-  attack:     number;
-  defense:    number;
-  speed:      number;
-  skills:     SkillData[];     // à brancher sur le système de skills ennemis
-  xpReward:   number;
-  goldReward: number;
-}
-```
-
-### `Enemy` (entité runtime)
-
-```typescript
-class Enemy {
-  data:      EnemyData;
-  skills:    Skill[];
-  currentHp: number;
-
-  isAlive(): boolean
-  takeDamage(amount: number): number
-  getReadySkill(): Skill | null
-  tickSkillCooldowns(usedSkillIds: Set<string> | null): void
-}
-```
-
-Symétrique à `Hero` : mêmes primitives de skills et de cooldown.
+Pas de `xpReward`/`goldReward` : retirés, aucune utilisation dans le code actuel. Seront réintroduits au niveau `LevelDefinition` (avec composante aléatoire), pas par ennemi individuel — voir `07_TODO.md`.
 
 ## Grille
 
@@ -256,11 +248,8 @@ interface CombatEvent {
   type:
     | 'turn_start'           // une unité commence son tour
     | 'unit_moved'           // une unité s'est déplacée
-    | 'hero_attack'          // attaque de base d'un héros (non utilisé actuellement)
-    | 'enemy_attack'         // attaque d'un ennemi
     | 'skill_used'           // un skill a infligé des dégâts ou soigné
-    | 'hero_died'            // un héros est mort
-    | 'enemy_died'           // un ennemi est mort
+    | 'unit_died'            // une unité (héros ou ennemi) est morte
     | 'round_start'          // nouveau round
     | 'combat_won'           // tous les ennemis vaincus
     | 'combat_lost'          // tous les héros vaincus
@@ -283,6 +272,8 @@ interface CombatEvent {
   totalHits?: number;
 }
 ```
+
+`unit_died` remplace les anciens `hero_died`/`enemy_died` : les deux déclenchaient un traitement strictement identique côté `CombatScene` et `CombatSystem`, la distinction était purement informative et inutilisée.
 
 ## Factory — `buildCombatSetup`
 
@@ -313,8 +304,11 @@ PlayerHeroState ──────────────► HeroDefinition (vi
       ▼ (mappé dans combat.factory)
    SkillData
       │
-      ▼ (instancié dans Hero constructor)
+      ▼ (instancié dans Hero/Enemy constructor, via CombatUnit)
     Skill (avec état cooldown)
+
+HeroDefinition + PlayerHeroState ──► Hero extends CombatUnit
+EnemyDefinition                  ──► Enemy extends CombatUnit
 
 LevelDefinition.enemySpawns[] ──► EnemyDefinition (via enemyId)
 LevelDefinition.heroSpawns[]  ──► PlayerHeroState (via heroId)

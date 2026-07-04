@@ -106,8 +106,6 @@ export interface EnemyDefinition {
   moveRange: number;
   skills:    string[];    // 2 skills pour normal, 3 pour boss
   spriteKey: string;
-  xpReward:  number;
-  goldReward: number;
 }
 
 // ---------------------------------------------------------------------------

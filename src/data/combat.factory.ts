@@ -116,9 +116,7 @@ export function buildEnemy(spawn: EnemySpawn, index: number): Enemy {
     attack: scaledStats.attack,
     defense: scaledStats.defense,
     speed: scaledStats.speed,
-    skills,           // à brancher sur le système de skills ennemis (prochaine feature)
-    xpReward: Math.round(def.xpReward * scale),
-    goldReward: Math.round(def.goldReward * scale),
+    skills
   };
 
   return new Enemy(enemyData);

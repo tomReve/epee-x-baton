@@ -16,8 +16,9 @@ src/
 │   └── TurnSystem.ts           # File de tour triée par vitesse
 │
 ├── entities/
-│   ├── Hero.ts                 # Données et état runtime d'un héros
-│   ├── Enemy.ts                # Données et état runtime d'un ennemi
+│   ├── CombatUnit.ts           # Classe abstraite commune : état runtime combat (hp, skills, cooldowns)
+│   ├── Hero.ts                 # Données spécifiques héros, hérite de CombatUnit
+│   ├── Enemy.ts                # Données spécifiques ennemi, hérite de CombatUnit
 │   ├── Skill.ts                # Définition + état runtime d'un skill (cooldown)
 │   └── UnitAnimator.ts         # Gestion des animations par unité (idle/walk/attack)
 │
@@ -44,7 +45,7 @@ src/
 |---|---|---|
 | `GridSystem` | Géométrie pure : cases libres, portées, formes AOE | Aucune (pas Phaser, pas entités) |
 | `TurnSystem` | Ordre des tours, avancement, gestion des morts | `Hero`, `Enemy` (interfaces légères) |
-| `CombatSystem` | Flux d'un tour : déplacement → skills → fin de tour | `GridSystem`, `TurnSystem`, `Hero`, `Enemy` |
+| `CombatSystem` | Flux d'un tour : déplacement → skills → fin de tour | `GridSystem`, `TurnSystem`, `CombatUnit` |
 | `CombatScene` | Affichage Phaser, animations, UI | Phaser, tous les systèmes |
 | `data/` | Données statiques de game design | Types uniquement |
 | `entities/` | État runtime des unités | `data/` via factory |
@@ -57,8 +58,8 @@ src/
 levels.json
     ↓ levels.data.ts (typage)
     ↓ combat.factory.ts (buildCombatSetup)
-        ├── Hero[]        ← HeroDefinition + PlayerHeroState + SkillDefinition
-        ├── Enemy[]       ← EnemyDefinition + SkillDefinition
+        ├── Hero[]        ← HeroDefinition + PlayerHeroState + SkillDefinition (extends CombatUnit)
+        ├── Enemy[]       ← EnemyDefinition + SkillDefinition (extends CombatUnit)
         └── GridUnit[]    ← positions initiales
     ↓ CombatScene.create()
         ├── GridSystem    ← addUnit(gridUnit)
@@ -71,25 +72,26 @@ levels.json
                 └── EventBus.emit (résultats combat)
 ```
 
-## Flux d'un tour héros
+## Flux d'un tour (héros ou ennemi, générique sur CombatUnit)
 
 ```
 processTurn()
-  └── processHeroTurn(id)
+  └── résout allies/foes selon TurnUnit.isHero
+  └── processUnitTurn(unit, foes)
         ├── Aucune cible en portée ?
         │     └── moveTowardNearest() → emit 'unit_moved'
-        │           └── après MOVE_ANIM_DELAY : executeHeroSkills() ou endHeroTurn()
+        │           └── après MOVE_ANIM_DELAY : executeSkills() ou endTurn()
         └── Cible en portée ?
-              └── executeHeroSkills()
+              └── executeSkills()
                     └── castSkillsSequentially(skills, index, usedThisTurn)
-                          ├── skill.heal && !skill.damage → useHeroSkill(hero, skill, [])
+                          ├── skill.heal && !skill.damage → useSkill(unit, skill, [])
                           ├── liveTargets.length === 0 → skill suivant (pas de fin de tour)
                           └── liveTargets OK → emit 'skill_preview'
-                                └── après PREVIEW_DELAY : useHeroSkill() → emit events
-                                      └── après animDelay : skill suivant ou endHeroTurn()
+                                └── après PREVIEW_DELAY : useSkill() → emit events
+                                      └── après animDelay : skill suivant ou endTurn()
 
-endHeroTurn(hero, usedSkillIds)
-  └── tickSkillCooldowns(usedSkillIds)  ← sauf skills utilisés ce tour
+endTurn(unit, usedSkillIds)
+  └── tickSkillCooldowns(usedSkillIds)
   └── emit 'cooldowns_updated'
   └── finishTurn()
         └── turns.next()
@@ -97,19 +99,7 @@ endHeroTurn(hero, usedSkillIds)
         └── scheduleTurn(TURN_DELAY)
 ```
 
-## Flux d'un tour ennemi
-
-```
-processEnemyTurn(id)
-  ├── Cible en portée d'un skill prêt ? → executeEnemySkills()
-  │     └── castEnemySkillsSequentially(skills, index, usedThisTurn)
-  │           ├── preview AOE (400ms)
-  │           ├── useEnemySkill (dégâts)
-  │           └── skill suivant ou endEnemyTurn()
-  └── sinon → déplacement → [cible en portée ?] → executeEnemySkills() ou endEnemyTurn()
-
-endEnemyTurn → tickSkillCooldowns (sauf skills utilisés ce tour) → finishTurn
-```
+Une seule implémentation pour héros et ennemis — `CombatSystem` ne connaît que `CombatUnit`, jamais `Hero`/`Enemy` directement.
 
 ## Constantes de timing (CombatSystem)
 

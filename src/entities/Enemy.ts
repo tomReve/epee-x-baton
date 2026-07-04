@@ -1,55 +1,12 @@
-import { Skill, SkillData } from './Skill';
+import { CombatUnit, BaseUnitData } from './CombatUnit';
 
-export interface EnemyData {
-  id: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  skills: SkillData[];
-  xpReward: number;
-  goldReward: number;
-}
+export interface EnemyData extends BaseUnitData {}
 
-export class Enemy {
+export class Enemy extends CombatUnit {
   data: EnemyData;
-  skills: Skill[];
-  currentHp: number;
-  lastAttack: number = 0;
 
   constructor(data: EnemyData) {
+    super(data);
     this.data = { ...data };
-    this.currentHp = data.maxHp;
-    this.skills = data.skills.map(s => new Skill(s));
-  }
-
-  isAlive(): boolean { return this.currentHp > 0; }
-
-  takeDamage(amount: number): number {
-    const dmg = Math.max(1, amount - this.data.defense);
-    this.currentHp = Math.max(0, this.currentHp - dmg);
-    return dmg;
-  }
-
-  canAttack(now: number): boolean {
-    return now - this.lastAttack >= this.data.speed;
-  }
-
-  attack(now: number): number {
-    this.lastAttack = now;
-    return this.data.attack;
-  }
-
-  getReadySkill(): Skill | null {
-    return this.skills.find(s => s.isReady()) ?? null;
-  }
-
-  tickSkillCooldowns(usedSkillIds: Set<string> | null): void {
-    for (const skill of this.skills) {
-      if (usedSkillIds?.has(skill.data.id)) continue;
-      skill.tickCooldown();
-    }
   }
 }

@@ -399,8 +399,7 @@ export class CombatScene extends Phaser.Scene {
                 this.clearAoePreview();
                 return;
 
-            case 'enemy_died':
-            case 'hero_died':
+            case 'unit_died':
                 this.killSprite(event.source!);
                 this.drawTimeline();
                 return;

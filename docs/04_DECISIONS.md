@@ -150,15 +150,23 @@
 
 ---
 
-## Pas de supertype commun Hero/Enemy pour les skills ennemis
+## Classe commune `CombatUnit` pour Hero et Enemy (renverse la décision précédente)
 
-**Contexte** : implémentation des skills ennemis (symétrique au système héros). `processHeroTurn` et `processEnemyTurn` partagent la même structure logique (cible en portée ? sinon déplacement → skills → fin de tour).
+**Contexte** : `Hero` et `Enemy` étaient identiques au caractère près en runtime (état, cooldowns, dégâts), seule la couche progression/rewards différait. La duplication dans `CombatSystem` (`processHeroTurn`/`processEnemyTurn`, `useHeroSkill`/`useEnemySkill`, etc.) devenait un risque concret avec l'arrivée des effets de statut (shield, stun) qui auraient dû être codés deux fois.
 
-**Décision** : dupliquer les méthodes de flux (`processEnemyTurn`, `executeEnemySkills`, `castEnemySkillsSequentially`, `endEnemyTurn`) plutôt que de fusionner avec leurs pendants héros. Seul le calcul d'impact pur (dégâts, multi-hit, stagger) est factorisé via `applySkillImpact<T extends DamageableUnit>`.
+**Décision** : `CombatUnit` (classe abstraite) porte tout l'état et les comportements runtime de combat : `data` (stats de base), `skills`, `currentHp`, `isAlive()`, `takeDamage()`, `heal()`, `getReadySkill()`, `tickSkillCooldowns()`. `Hero` et `Enemy` héritent de `CombatUnit` et ne portent plus que leurs champs propres (aucun pour l'instant côté runtime — la distinction reste au niveau `HeroDefinition`/`EnemyDefinition` et `PlayerHeroState`, hors combat).
 
-**Raisons** :
-- `Hero` et `Enemy` n'ont pas de supertype commun ; les fusionner nécessiterait une interface `CombatUnit` non demandée et non documentée
-- Les listes d'alliés/cibles (`this.heroes` / `this.enemies`) diffèrent structurellement selon le camp qui joue
-- `handleDeath(id, isHero)` distingue déjà les deux camps pour les conditions de victoire — asymétrie déjà existante et assumée
+**`CombatSystem` devient générique sur `CombatUnit`** : `processHeroTurn`/`processEnemyTurn` fusionnés en `processUnitTurn`, idem pour `executeSkills`, `castSkillsSequentially`, `useSkill`, `endTurn`. Plus aucune méthode dupliquée par camp. Le seul point où le camp compte encore est `processTurn()`, qui lit `TurnUnit.isHero` (fourni par `TurnSystem`) pour choisir quelle liste (`heroes`/`enemies`) est alliée et laquelle est adverse.
 
-**Alternative possible** : introduire `CombatUnit` (skills, attack, isAlive, heal?) implémentée par `Hero` et `Enemy`, pour unifier `processHeroTurn`/`processEnemyTurn` en une seule méthode paramétrée par camp. Non fait — refactor d'architecture à trancher explicitement si la duplication devient un problème réel (ex: 3e camp, mécaniques divergentes).
+**Events `hero_died`/`enemy_died` fusionnés en `unit_died`** : les deux events déclenchaient un traitement strictement identique côté `CombatScene` (`killSprite` + `drawTimeline`) et côté `CombatSystem` (retrait grid/turns, vérif victoire/défaite). La distinction était purement informative et inutilisée — supprimée.
+
+**`Enemy` gagne `heal()`** (hérité de `CombatUnit`) bien qu'aucun skill ennemi n'en dispose actuellement — anticipe un futur skill de soin ennemi sans nouveau refactor.
+
+**`xpReward`/`goldReward` retirés d'`EnemyDefinition`/`EnemyData`** : ces champs n'étaient utilisés nulle part dans le code (juste stockés). Seront réintroduits plus tard au niveau `LevelDefinition` avec une composante aléatoire, plutôt que fixés par ennemi.
+
+**Raisons du renversement** :
+- La duplication touchait déjà 5 paires de méthodes avant ce refactor ; chaque nouvelle feature (statut, shield, crit) aurait ajouté une paire de plus
+- Aucune divergence de comportement runtime réelle entre `Hero` et `Enemy` ne justifiait la duplication — seule la couche progression (hors combat) diffère
+- Reste réversible : rien n'empêche de spécialiser `Hero`/`Enemy` plus tard si une mécanique de combat diverge réellement entre les deux camps
+
+**Point de vigilance conservé** : `isHero` existe encore en trois endroits indépendants (`GridUnit.isHero`, `TurnUnit.isHero`, appartenance à `heroes[]`/`enemies[]` dans `CombatSystem`) — non unifié, car aucun usage actuel ne l'exige. Noté en veille dans `07_TODO.md`.

@@ -24,9 +24,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 600,  attack: 12, defense: 2,  speed: 1400 },
     moveRange: 3,
     skills:    ['enemy_basic_attack', 'enemy_heavy_blow'],
-    spriteKey: 'goblin',
-    xpReward:  30,
-    goldReward: 10,
+    spriteKey: 'goblin'
   },
   {
     id:        'orc',
@@ -35,9 +33,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 900,  attack: 18, defense: 5,  speed: 1600 },
     moveRange: 2,
     skills:    ['enemy_basic_attack', 'enemy_cleave'],
-    spriteKey: 'orc',
-    xpReward:  50,
-    goldReward: 18,
+    spriteKey: 'orc'
   },
   {
     id:        'dark_elf',
@@ -46,9 +42,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 500,  attack: 22, defense: 3,  speed: 1200 },
     moveRange: 4,
     skills:    ['enemy_basic_attack', 'enemy_heavy_blow'],
-    spriteKey: 'dark_elf',
-    xpReward:  45,
-    goldReward: 15,
+    spriteKey: 'dark_elf'
   },
 
   // -------------------------------------------------------------------------
@@ -61,9 +55,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 2500, attack: 28, defense: 8,  speed: 1800 },
     moveRange: 2,
     skills:    ['enemy_basic_attack', 'enemy_cleave', 'boss_shockwave'],
-    spriteKey: 'goblin_king',
-    xpReward:  150,
-    goldReward: 60,
+    spriteKey: 'goblin_king'
   },
 
   // -------------------------------------------------------------------------
@@ -76,9 +68,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 700,  attack: 15, defense: 4,  speed: 1500 },
     moveRange: 3,
     skills:    ['enemy_basic_attack', 'enemy_heavy_blow'],
-    spriteKey: 'skeleton',
-    xpReward:  40,
-    goldReward: 12,
+    spriteKey: 'skeleton'
   },
   {
     id:        'skeleton_archer',
@@ -87,9 +77,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 500,  attack: 20, defense: 2,  speed: 1300 },
     moveRange: 2,
     skills:    ['enemy_basic_attack', 'enemy_heavy_blow'],
-    spriteKey: 'skeleton_archer',
-    xpReward:  48,
-    goldReward: 14,
+    spriteKey: 'skeleton_archer'
   },
 
   // -------------------------------------------------------------------------
@@ -102,9 +90,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     baseStats: { hp: 3000, attack: 35, defense: 6,  speed: 1600 },
     moveRange: 2,
     skills:    ['enemy_basic_attack', 'boss_rage', 'boss_ulti'],
-    spriteKey: 'lich',
-    xpReward:  200,
-    goldReward: 80,
+    spriteKey: 'lich'
   },
 ];
 

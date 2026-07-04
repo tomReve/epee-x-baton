@@ -2,17 +2,12 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Décision architecture Hero/Enemy (bloquant pour la suite)
-- [ ] Trancher : classe/interface commune (`CombatUnit`) vs duplication contrôlée maintenue
-- [ ] Impacte directement : effets de statut, shield, ciblage intelligent, crit/miss
-- [ ] À faire AVANT d'attaquer les effets de statut pour éviter de dupliquer puis défaire
-
-### Déplacement après attaque dans le même tour
+### Optimisation et déplacement après attaque dans le même tour
 - [ ] Un héros ou un ennemi peut se déplacer **avant et/ou après** ses skills dans le même tour
 - [ ] Structure du tour : [move?] → [skills] → [move?]
 - [ ] Permet d'attaquer un ennemi, de le finir, puis de se repositionner pour le suivant
+- [ ] Le déplacement n'est pas obligatoire. Si pas besoin de se déplacer alors reste sur place.
 - [ ] Implique de refactoriser `processXTurn` pour séparer les phases de déplacement et d'attaque
-- [ ] À faire AVANT les effets de statut type Stun/Frozen (même zone de code, flux de tour)
 
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)
@@ -29,12 +24,15 @@
 - [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
 
-### Ciblage intelligent
+### Ciblage intelligent et ciblage allié (heal/buff)
 - [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
 - [ ] Cibler le plus faible (pour finir rapidement)
 - [ ] Cibler le plus dangereux (celui avec le plus d'ATK)
 - [ ] Configurable par skill (exemple : monocible avec gros dégat focus le monstre avec le plus de HP, sort pour cibler les ennemis avec le moins / le plus de PV)
-- [ ] À regrouper avec "ciblage côté allié" ci-dessous (même zone : `GridSystem`/`getAoeTargets`)
+- [ ] `targetSide: 'enemy' | 'ally'` dans `SkillData`
+- [ ] Permettre aux skills de soin de cibler l'allié le plus bas en HP
+- [ ] Le soin actuel est uniquement sur le caster — à étendre
+- [ ] Les soins et buff peuvent être de zone
 
 ## Priorité moyenne
 
@@ -45,12 +43,6 @@
 ### Probabilité d'évènement
 - [ ] Chance d'application (les effets de status peuvent avoir une chance d'application entre 1 et 100%)
 - [ ] Chance de skill en chaine (chance de déclencher x fois des dégats)
-
-### Ciblage côté allié (heal/buff)
-- [ ] `targetSide: 'enemy' | 'ally'` dans `SkillData`
-- [ ] Permettre aux skills de soin de cibler l'allié le plus bas en HP
-- [ ] Le soin actuel est uniquement sur le caster — à étendre
-- [ ] Les soins et buff peuvent être de zone
 
 ### Coups critiques, esquives et autres stats secondaires
 - [ ] `critRate?: number` sur `SkillData` ou `HeroDefinition`
@@ -158,3 +150,8 @@
 - [ ] **Gold** : à quoi servira-t-il ? Équipements ? Upgrades de skills ?
 - [ ] **Statuts persistants** : un buff/debuff peut-il survivre à la fin d'un combat, ou tout est reset systématiquement ?
 - [ ] **Resize mobile** : le resize restart actuellement toute la scène (`scale.on('resize') → scene.restart()`) — acceptable si rotation d'écran en cours de combat sur mobile/PWA, ou à traiter différemment ?
+
+## Veille technique (pas d'action requise pour l'instant)
+- [ ] `isHero` existe en triple source (`GridUnit.isHero`, `TurnUnit.isHero`, appartenance à `heroes[]`/`enemies[]` dans `CombatSystem`) — à surveiller si une feature (invocation, pet temporaire) introduit une unité qui change de camp ou n'est pas connue à la construction du combat
+- [ ] `CombatSystem.handleDeath` suppose `this.heroes`/`this.enemies` figés depuis le début du combat pour la détection victoire/défaite — à revoir si une feature d'invocation en cours de combat est ajoutée
+- [ ] `resolvePreviewCells` dans `CombatScene.ts` reste une duplication assumée de `GridSystem.getAoeTargets` (déjà documentée dans `04_DECISIONS.md`) — à réévaluer si la logique de ciblage diverge davantage (ex: ciblage intelligent, ciblage allié)

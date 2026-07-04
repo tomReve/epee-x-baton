@@ -3,35 +3,67 @@
 ## Priorité haute (prochaines sessions)
 
 ### Déplacement après attaque dans le même tour
-- [ ] Un héros peut se déplacer **avant et/ou après** ses skills dans le même tour
+- [ ] Un héros ou un ennemi peut se déplacer **avant et/ou après** ses skills dans le même tour
 - [ ] Structure du tour : [move?] → [skills] → [move?]
 - [ ] Permet d'attaquer un ennemi, de le finir, puis de se repositionner pour le suivant
-- [ ] Implique de refactoriser `processHeroTurn` pour séparer les phases de déplacement et d'attaque
+- [ ] Implique de refactoriser `processXTurn` pour séparer les phases de déplacement et d'attaque
+- [ ] Peut-être est-ce le moment de réfactoriser Hero et Ennemy, pour les combats et les statistiques ils suivent plutôt la même logique. C'est en dehors des combats qu'ils sera différents (progression de heros que les ennemis n'ont pas). Avoir une classe parente ? (fais mois un état des lieux de leurs différences à date)
 
 ### Ciblage intelligent
 - [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
 - [ ] Cibler le plus faible (pour finir rapidement)
 - [ ] Cibler le plus dangereux (celui avec le plus d'ATK)
-- [ ] Configurable par skill ou par type d'ennemi
+- [ ] Configurable par skill (exemple : monocible avec gros dégat focus le monstre avec le plus de HP, sort pour cibler les ennemis avec le moins / le plus de PV)
 
 ## Priorité moyenne
 
-### Effets de statut
+### Skills avec déplacement ou crownd crontrol
+- [ ] Implémenter la possibilité d'avoir des skills qui déplace le personnage avant ou après l'attaque (dash, jump, teleportation, etc)
+- [ ] Implémenter la possibilité d'avoir des skills qui déplace les ennemis (attirer, pousser, regrouper)
+
+### Effets de statut / effet de sort spéciaux
 - [ ] Poison (dégâts par tour)
-- [ ] Stun (passe le tour)
+- [ ] Burn (case appliquant des dégats sous certaines conditions)
+- [ ] Stun / Frozen (passe le tour, empêche certaines actions)
 - [ ] Shield (absorption de dégâts)
-- [ ] Burn (version magic du poison)
+- [ ] Taunt / Fear (les ennemis focus / evite le joueur qui à taunter / fear)
+- [ ] Buff/Debuff (améliore / diminue les statistiques du joueur (attaque / def / crit / speed / mouvement / etc))
+- [ ] Dispel (retire les status)
+- [ ] Lifesteal (soigne le héros de X% des dégats subits, ignore les dégats appliqués aux shields)
+- [ ] Réduction de cooldown (réduit le cooldown de x sorts)
+- [ ] Shield break (dommage supplémentaire sur les boucliers)
+- [ ] Contre (renvoi de dégats)
 - [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
+
+### Probabilité d'évènement : 
+- [ ] Chance d'application (les effets de status peuvent avoir une chance d'application entre 1 et 100%)
+- [ ] Chance de skill en chaine (chance de déclencher x fois des dégats )
 
 ### Ciblage côté allié (heal/buff)
 - [ ] `targetSide: 'enemy' | 'ally'` dans `SkillData`
 - [ ] Permettre aux skills de soin de cibler l'allié le plus bas en HP
 - [ ] Le soin actuel est uniquement sur le caster — à étendre
+- [ ] Les soins et buff peuvent être de zone
 
-### Coups critiques et esquives
+### Coups critiques, esquives et autres stats secondaires
 - [ ] `critRate?: number` sur `SkillData` ou `HeroDefinition`
 - [ ] `missRate?: number` sur `EnemyDefinition`
 - [ ] Floating text spécial pour les crits (taille plus grande, couleur différente)
+- [ ] Reflexions sur d'autres stats à implémenter
+
+### Modification du calcul des dégats, effet de statut et buff
+- [ ] Développer un system de calcul des dégats plus poussé
+- [ ] Dégats de compétence en fonction des statistiques + valeur flat (attaque, maitrise physique, maitrise élémentaire)
+- [ ] Scalling des sorts en fonction d'une statistique
+- [ ] Calcul plus complexe que juste utilisé les valeurs flats (remplacer les formules comme dégats - défense = dégats appliqués)
+
+### Skills élémentaires
+- [ ] Les skills élémentaires ont différent type (feu, eau, air, lumière, ténèbre)
+- [ ] Certains ennemies sont plus résistant à un élément et plus faible à un autre
+- [ ] Les héros peuvent renforcer leur affinité avec ou plusieurs éléments et augmenter leur résistance avec un ou plusieurs éléments
+
+### Skills unique de début de combat
+- [] Pouvoir créer des skills qui ne se déclenche qu'une fois au début du combat (effet de status la plupart du temps)
 
 ### Système de progression
 - [ ] XP gagnée après combat (selon `xpReward` des ennemis vaincus)
@@ -51,6 +83,18 @@
 
 ## Priorité basse
 
+### Définir l'identité des classe et une bonne base de skills
+- [] Réflexion sur l'identité des classes
+- [] Réflexion et création d'une bonne liste de skills pour chaque class correspondant à son rôle
+
+### Classes évolutives
+- [] Chaque classes à plusieurs niveau de classes (exemple: archer -> tirreur d'élite -> Arbalétrier)
+- [] Chaque niveau de classe débloque de nouveaux skills / charmes
+- [] Les niveaux de classes se débloquent en remplissant certaines conditions
+
+### Skills passifs (charmes)
+- [] Les monstres et héros peuvent avoir X skills passifs en plus des skills actifs
+
 ### MapScene — Exploration du monde
 - [ ] Carte du monde avec zones (forêt, donjon, etc.)
 - [ ] Navigation entre les niveaux d'une zone
@@ -65,6 +109,7 @@
 ### Mega Boss
 - [ ] Type `mega_boss` déjà défini dans `EnemyType`
 - [ ] Stats et mécaniques à définir (phase 2 quand HP < 50% ?)
+- [ ] Prend plusieurs cases
 
 ### Mode `damage_race`
 - [ ] Type `CombatMode = 'eliminate' | 'damage_race'` déjà défini dans `CombatSystem`
@@ -93,6 +138,5 @@
 - [ ] **Mega boss** : mêmes stats/skills qu'un boss mais avec une phase 2 ? Mécaniques spéciales ?
 - [ ] **Sauvegarde** : localStorage uniquement, ou API backend prévu ?
 - [ ] **Multi-héros** : combien de héros max dans une équipe ? (actuellement 2, données prévoient 4 classes)
-- [ ] **Skill targeting** : un héros peut-il avoir un skill qui cible un allié autre que lui-même ?
 - [ ] **Mort des héros** : les héros sont "permanents" — mais peuvent-ils être KO temporairement en combat et se relever ?
 - [ ] **Gold** : à quoi servira-t-il ? Équipements ? Upgrades de skills ?

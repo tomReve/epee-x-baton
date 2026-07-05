@@ -197,6 +197,21 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 
 ---
 
+## Phase 8 — Repositionnement inter-skills
+
+### Déplacement avant chaque skill de la chaîne
+- `castSkillsSequentially` : si un skill (hors support) n'a pas de cible en portée, tentative de repositionnement via `tryRepositionForSkill` avant de passer au skill suivant
+- Ancien move-before de `processUnitTurn` supprimé, remplacé par ce point de vérification unique répété avant chaque skill
+- `GridSystem.getReachableCells`/`moveTowardNearest` acceptent un `maxDistance` optionnel — `moveTowardNearest` retourne `{ pos, distance }` pour permettre le décompte de budget
+
+### Budget de déplacement par tour
+- `moveBudget` initialisé à `gridUnit.moveRange`, consommé en cases cumulées (pas en nombre de déplacements), transmis en paramètre dans toute la chaîne d'appels — même pattern que `usedThisTurn`
+
+### Uniformisation moveRange
+- `MOVE_RANGE_NORMAL = 4` ajoutée dans `heroes.data.ts` et `enemies.data.ts`, remplace les valeurs 2/3 précédentes par unité
+
+---
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

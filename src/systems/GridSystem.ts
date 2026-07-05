@@ -80,12 +80,13 @@ export class GridSystem {
   // ---------------------------------------------------------------------------
 
   /** Retourne toutes les cases atteignables par une unité. */
-  getReachableCells(unit: GridUnit): GridPosition[] {
+  getReachableCells(unit: GridUnit, maxDistance?: number): GridPosition[] {
+    const range = maxDistance !== undefined ? Math.min(unit.moveRange, maxDistance) : unit.moveRange;
     const result: GridPosition[] = [];
     for (let c = 0; c < this.cols; c++) {
       for (let r = 0; r < this.rows; r++) {
         const target = { col: c, row: r };
-        if (this.distance(unit.pos, target) <= unit.moveRange && this.isCellFree(target)) {
+        if (this.distance(unit.pos, target) <= range && this.isCellFree(target)) {
           result.push(target);
         }
       }
@@ -96,8 +97,10 @@ export class GridSystem {
   /**
    * IA simple : avance vers l'ennemi le plus proche en choisissant
    * la case accessible la plus proche de lui.
+   * maxDistance borne le déplacement (budget de mouvement restant sur le tour).
+   * Retourne la case atteinte et la distance parcourue, ou null si aucun déplacement possible.
    */
-  moveTowardNearest(unit: GridUnit): GridPosition | null {
+  moveTowardNearest(unit: GridUnit, maxDistance?: number): { pos: GridPosition; distance: number } | null {
     const enemies = Array.from(this.units.values()).filter(u => u.isHero !== unit.isHero);
     if (enemies.length === 0) return null;
 
@@ -105,15 +108,16 @@ export class GridSystem {
       this.distance(unit.pos, t.pos) < this.distance(unit.pos, best.pos) ? t : best
     );
 
-    const reachable = this.getReachableCells(unit);
+    const reachable = this.getReachableCells(unit, maxDistance);
     if (reachable.length === 0) return null;
 
     const best = reachable.reduce((bestCell, cell) =>
       this.distance(cell, nearest.pos) < this.distance(bestCell, nearest.pos) ? cell : bestCell
     );
 
+    const dist = this.distance(unit.pos, best);
     unit.pos = best;
-    return best;
+    return { pos: best, distance: dist };
   }
 
   /** Déplacement manuel vers une position spécifique (usage futur : input joueur). */

@@ -8,13 +8,15 @@ import { HeroDefinition, PlayerHeroState } from '../types/game.types';
 // PlayerHeroState = ce que le héros DEVIENT (progression joueur, persisté)
 // ---------------------------------------------------------------------------
 
+const MOVE_RANGE_NORMAL = 4;
+
 export const HERO_DEFINITIONS: HeroDefinition[] = [
   {
     id:        'archer',
     name:      'Archer',
     class:     'archer',
     baseStats: { hp: 1200, attack: 30, defense: 4,  speed: 1600 },
-    moveRange: 3,
+    moveRange: MOVE_RANGE_NORMAL,
     availableSkills: [
       'archer_quick_shot',
       'archer_piercing_shot',
@@ -29,7 +31,7 @@ export const HERO_DEFINITIONS: HeroDefinition[] = [
     name:      'Lancer',
     class:     'lancer',
     baseStats: { hp: 1600, attack: 28, defense: 6,  speed: 1400 },
-    moveRange: 3,
+    moveRange: MOVE_RANGE_NORMAL,
     availableSkills: [
       'lancer_thrust',
       'lancer_sweep',
@@ -44,7 +46,7 @@ export const HERO_DEFINITIONS: HeroDefinition[] = [
     name:      'Warrior',
     class:     'warrior',
     baseStats: { hp: 2500, attack: 20, defense: 12, speed: 1200 },
-    moveRange: 2,
+    moveRange: MOVE_RANGE_NORMAL,
     availableSkills: [
       'warrior_shield_bash',
       'warrior_whirlwind',
@@ -59,7 +61,7 @@ export const HERO_DEFINITIONS: HeroDefinition[] = [
     name:      'Monk',
     class:     'monk',
     baseStats: { hp: 1400, attack: 18, defense: 5,  speed: 1500 },
-    moveRange: 3,
+    moveRange: MOVE_RANGE_NORMAL,
     availableSkills: [
       'monk_heal',
       'monk_holy_strike',

@@ -170,3 +170,24 @@
 - Reste réversible : rien n'empêche de spécialiser `Hero`/`Enemy` plus tard si une mécanique de combat diverge réellement entre les deux camps
 
 **Point de vigilance conservé** : `isHero` existe encore en trois endroits indépendants (`GridUnit.isHero`, `TurnUnit.isHero`, appartenance à `heroes[]`/`enemies[]` dans `CombatSystem`) — non unifié, car aucun usage actuel ne l'exige. Noté en veille dans `07_TODO.md`.
+
+---
+
+## Repositionnement inter-skills : budget en cases cumulées, porté par GridSystem
+
+**Contexte** : un skill dans la chaîne peut se retrouver sans cible en portée (ex: mort de la cible précédente). Besoin de permettre un repositionnement ponctuel avant de retenter, sans autoriser un déplacement illimité sur le tour.
+
+**Décision** :
+- `GridSystem.getReachableCells(unit, maxDistance?)` et `moveTowardNearest(unit, maxDistance?)` acceptent un budget optionnel, qui borne la distance en plus de `moveRange`
+- `moveTowardNearest` retourne désormais `{ pos, distance } | null` (au lieu de `GridPosition | null`), pour permettre à l'appelant de décrémenter son budget
+- `CombatSystem` porte un `moveBudget` initialisé à `gridUnit.moveRange`, consommé en **cases cumulées sur tout le tour** (pas en nombre de déplacements distincts), transmis en paramètre à travers `executeSkills → castSkillsSequentially → tryRepositionForSkill/castSkillNow`
+- L'ancien move-before séparé dans `processUnitTurn` est supprimé — un seul point de vérification (avant chaque skill) remplace les deux flux précédents
+
+**Raisons** :
+- Une seule source de vérité pour "quelles cases sont atteignables" (`GridSystem`), pas de duplication du calcul de distance dans `CombatSystem`
+- Cohérent avec le style existant du fichier (`usedThisTurn` déjà géré en paramètre, pas en champ `this`) — évite tout risque de collision d'état entre tours/unités via les `setTimeout` imbriqués
+- Simplifie le flux : plus de distinction move-before / move-after, un seul chemin de repositionnement réutilisé partout dans la chaîne de skills
+
+**Limite connue** : `moveTowardNearest` se rapproche de l'ennemi le plus proche en général, sans connaître la range ni la forme AOE du skill visé — peut échouer à mettre une cible en portée si le skill a une courte range et l'ennemi est loin. Le ciblage réellement adapté au skill (meilleur positionnement pour une AOE) est noté dans `07_TODO.md`, dépendant du futur "ciblage intelligent".
+
+**`moveRange` uniformisé** : `MOVE_RANGE_NORMAL = 4` introduite dans `heroes.data.ts` et `enemies.data.ts` pour uniformiser la valeur entre unités (remplace les valeurs disparates 2/3 précédentes).

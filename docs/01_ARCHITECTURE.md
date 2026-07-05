@@ -74,21 +74,24 @@ levels.json
 
 ## Flux d'un tour (héros ou ennemi, générique sur CombatUnit)
 
-```
+\`\`\`
 processTurn()
   └── résout allies/foes selon TurnUnit.isHero
   └── processUnitTurn(unit, foes)
-        ├── Aucune cible en portée ?
-        │     └── moveTowardNearest() → emit 'unit_moved'
-        │           └── après MOVE_ANIM_DELAY : executeSkills() ou endTurn()
-        └── Cible en portée ?
-              └── executeSkills()
-                    └── castSkillsSequentially(skills, index, usedThisTurn)
-                          ├── skill.heal && !skill.damage → useSkill(unit, skill, [])
-                          ├── liveTargets.length === 0 → skill suivant (pas de fin de tour)
-                          └── liveTargets OK → emit 'skill_preview'
+        └── executeSkills(unit, foes, moveBudget)  [moveBudget = gridUnit.moveRange]
+              └── castSkillsSequentially(skills, index, usedThisTurn, moveBudget)
+                    ├── skill sans cible en portée (hors support) ?
+                    │     └── tryRepositionForSkill()
+                    │           ├── moveBudget épuisé ou aucune case atteignable → skill suivant
+                    │           └── sinon → moveTowardNearest(budget restant) → emit 'unit_moved'
+                    │                 └── après MOVE_ANIM_DELAY : re-check cibles
+                    │                       ├── toujours aucune cible → skill suivant (budget décrémenté)
+                    │                       └── cible trouvée → castSkillNow()
+                    ├── skill.heal && !skill.damage → castSkillNow() direct (auto-cible)
+                    └── cible(s) en portée → castSkillNow()
+                          └── emit 'skill_preview'
                                 └── après PREVIEW_DELAY : useSkill() → emit events
-                                      └── après animDelay : skill suivant ou endTurn()
+                                      └── après animDelay : skill suivant (même budget) ou endTurn()
 
 endTurn(unit, usedSkillIds)
   └── tickSkillCooldowns(usedSkillIds)
@@ -97,7 +100,9 @@ endTurn(unit, usedSkillIds)
         └── turns.next()
         └── [round_start si index === 0]
         └── scheduleTurn(TURN_DELAY)
-```
+\`\`\`
+
+Le budget de déplacement (`moveBudget`, initialisé à `gridUnit.moveRange`) se consomme en **cases cumulées sur tout le tour**, pas en nombre de déplacements distincts. Il circule en paramètre à travers la chaîne d'appels, jamais stocké sur `this` — cohérent avec `usedThisTurn` (même pattern déjà en place).
 
 Une seule implémentation pour héros et ennemis — `CombatSystem` ne connaît que `CombatUnit`, jamais `Hero`/`Enemy` directement.
 

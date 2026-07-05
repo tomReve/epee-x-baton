@@ -106,47 +106,16 @@ export class CombatSystem {
 
   private processUnitTurn(unit: CombatUnit, foes: CombatUnit[]): void {
     const gridUnit = this.grid.getUnit(unit.data.id)!;
-    const ready    = unit.skills.filter(s => s.isReady());
-
-    const hasTarget = ready.some(skill =>
-      this.grid.getAoeTargets(gridUnit, skill.data).length > 0
-    );
-
-    if (hasTarget) {
-      this.executeSkills(unit, foes);
-      return;
-    }
-
-    const from = { ...gridUnit.pos };
-    const to   = this.grid.moveTowardNearest(gridUnit);
-
-    if (!to) {
-      this.endTurn(unit, null);
-      return;
-    }
-
-    this.onEvent({ type: 'unit_moved', source: unit.data.id, fromPos: from, toPos: to });
-
-    setTimeout(() => {
-      if (!this.running) return;
-      const hasTargetAfterMove = ready.some(skill =>
-        this.grid.getAoeTargets(gridUnit, skill.data).length > 0
-      );
-      if (hasTargetAfterMove) {
-        this.executeSkills(unit, foes);
-      } else {
-        this.endTurn(unit, null);
-      }
-    }, this.MOVE_ANIM_DELAY);
+    this.executeSkills(unit, foes, gridUnit.moveRange);
   }
 
-  private executeSkills(unit: CombatUnit, foes: CombatUnit[]): void {
+  private executeSkills(unit: CombatUnit, foes: CombatUnit[], moveBudget: number): void {
     const ready = unit.skills.filter(s => s.isReady());
     if (ready.length === 0) {
       this.endTurn(unit, null);
       return;
     }
-    this.castSkillsSequentially(unit, foes, ready, 0, new Set());
+    this.castSkillsSequentially(unit, foes, ready, 0, new Set(), moveBudget);
   }
 
   private castSkillsSequentially(
@@ -154,7 +123,8 @@ export class CombatSystem {
     foes:         CombatUnit[],
     skills:       Skill[],
     index:        number,
-    usedThisTurn: Set<string>
+    usedThisTurn: Set<string>,
+    moveBudget:   number
   ): void {
     if (index >= skills.length || !this.running) {
       this.endTurn(unit, usedThisTurn);
@@ -169,10 +139,65 @@ export class CombatSystem {
       .filter((f): f is CombatUnit => f !== undefined);
 
     if (liveTargets.length === 0 && skill.data.type !== 'support') {
-      this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn);
+      this.tryRepositionForSkill(unit, foes, skills, index, usedThisTurn, gridUnit, moveBudget);
       return;
     }
 
+    this.castSkillNow(unit, foes, skills, index, usedThisTurn, skill, liveTargets, moveBudget);
+  }
+
+  private tryRepositionForSkill(
+    unit:         CombatUnit,
+    foes:         CombatUnit[],
+    skills:       Skill[],
+    index:        number,
+    usedThisTurn: Set<string>,
+    gridUnit:     GridUnit,
+    moveBudget:   number
+  ): void {
+    if (moveBudget <= 0) {
+      this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
+      return;
+    }
+
+    const from   = { ...gridUnit.pos };
+    const result = this.grid.moveTowardNearest(gridUnit, moveBudget);
+
+    if (!result) {
+      this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
+      return;
+    }
+
+    const remainingBudget = moveBudget - result.distance;
+    this.onEvent({ type: 'unit_moved', source: unit.data.id, fromPos: from, toPos: result.pos });
+
+    setTimeout(() => {
+      if (!this.running) return;
+
+      const skill = skills[index];
+      const liveTargets = this.grid.getAoeTargets(gridUnit, skill.data)
+        .map(t => foes.find(f => f.data.id === t.id && f.isAlive()))
+        .filter((f): f is CombatUnit => f !== undefined);
+
+      if (liveTargets.length === 0) {
+        this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, remainingBudget);
+        return;
+      }
+
+      this.castSkillNow(unit, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
+    }, this.MOVE_ANIM_DELAY);
+  }
+
+  private castSkillNow(
+    unit:         CombatUnit,
+    foes:         CombatUnit[],
+    skills:       Skill[],
+    index:        number,
+    usedThisTurn: Set<string>,
+    skill:        Skill,
+    liveTargets:  CombatUnit[],
+    moveBudget:   number
+  ): void {
     this.onEvent({ type: 'skill_preview', source: unit.data.id, skillData: skill.data });
 
     setTimeout(() => {
@@ -185,7 +210,7 @@ export class CombatSystem {
 
       setTimeout(() => {
         if (!this.running) return;
-        this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn);
+        this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
       }, animDelay);
     }, PREVIEW_DELAY);
   }

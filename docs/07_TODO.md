@@ -2,13 +2,6 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Optimisation et déplacement après attaque dans le même tour
-- [ ] Un héros ou un ennemi peut se déplacer **avant et/ou après** ses skills dans le même tour
-- [ ] Structure du tour : [move?] → [skills] → [move?]
-- [ ] Permet d'attaquer un ennemi, de le finir, puis de se repositionner pour le suivant
-- [ ] Le déplacement n'est pas obligatoire. Si pas besoin de se déplacer alors reste sur place.
-- [ ] Implique de refactoriser `processXTurn` pour séparer les phases de déplacement et d'attaque
-
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)
 - [ ] Burn (case appliquant des dégats sous certaines conditions)

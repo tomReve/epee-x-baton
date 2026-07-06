@@ -1,6 +1,6 @@
 import { CombatUnit } from '../entities/CombatUnit';
 import { Skill, SkillData } from '../entities/Skill';
-import { GridSystem, GridUnit } from './GridSystem';
+import { GridPosition, GridSystem, GridUnit } from './GridSystem';
 import { TurnSystem } from './TurnSystem';
 
 export type CombatMode = 'eliminate' | 'damage_race';
@@ -122,13 +122,15 @@ export class CombatSystem {
 
   private applyTargetPriority(skill: SkillData, targets: CombatUnit[]): CombatUnit[] {
     const priority = skill.targetPriority ?? 'first';
-    if (priority === 'first' || targets.length <= 1) return targets;
 
-    const sorted = [...targets];
-    if (priority === 'lowest_hp') sorted.sort((a, b) => a.currentHp - b.currentHp);
-    if (priority === 'highest_attack') sorted.sort((a, b) => b.data.attack - a.data.attack);
+    if (priority !== 'first' && targets.length > 1) {
+      const sorted = [...targets];
+      if (priority === 'lowest_hp') sorted.sort((a, b) => (a.currentHp / a.data.maxHp) - (b.currentHp / b.data.maxHp));
+      if (priority === 'highest_attack') sorted.sort((a, b) => b.data.attack - a.data.attack);
+      targets = sorted;
+    }
 
-    return skill.targetType === 'single' ? sorted.slice(0, 1) : sorted;
+    return skill.targetType === 'single' ? targets.slice(0, 1) : targets;
   }
 
   private resolveLiveTargets(
@@ -142,48 +144,88 @@ export class CombatSystem {
   }
 
   private castSkillsSequentially(
-    unit:         CombatUnit,
-    allies:       CombatUnit[],
-    foes:         CombatUnit[],
-    skills:       Skill[],
-    index:        number,
+    unit: CombatUnit,
+    allies: CombatUnit[],
+    foes: CombatUnit[],
+    skills: Skill[],
+    index: number,
     usedThisTurn: Set<string>,
-    moveBudget:   number
+    moveBudget: number
   ): void {
     if (index >= skills.length || !this.running) {
       this.endTurn(unit, usedThisTurn);
       return;
     }
 
-    const skill    = skills[index];
+    const skill = skills[index];
     const gridUnit = this.grid.getUnit(unit.data.id)!;
     const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
 
-    if (liveTargets.length === 0 && skill.data.type !== 'support') {
-      this.tryRepositionForSkill(unit, allies, foes, skills, index, usedThisTurn, gridUnit, moveBudget);
+    const priorityTarget = this.findUnreachedPriorityTarget(skill, allies, foes, gridUnit);
+    const needsFallbackReposition = liveTargets.length === 0 && skill.data.type !== 'support';
+
+    if (priorityTarget || needsFallbackReposition) {
+      this.tryRepositionForSkill(unit, allies, foes, skills, index, usedThisTurn, gridUnit, moveBudget, priorityTarget);
       return;
     }
 
     this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, moveBudget);
   }
 
+  /** Retourne la meilleure cible par priorité si elle existe et n'est pas déjà dans liveTargets. */
+  private findUnreachedPriorityTarget(
+    skill: Skill, allies: CombatUnit[], foes: CombatUnit[], gridUnit: GridUnit
+  ): CombatUnit | null {
+    if (skill.data.targetType !== 'single') return null;
+
+    const priority = skill.data.targetPriority ?? 'first';
+    if (priority === 'first') return null;
+
+    const candidates = (skill.data.targetSide === 'ally' ? allies : foes).filter(u => u.isAlive());
+    if (candidates.length === 0) return null;
+
+    const best = priority === 'lowest_hp'
+      ? candidates.reduce((a, b) => (b.currentHp / b.data.maxHp) < (a.currentHp / a.data.maxHp) ? b : a)
+      : candidates.reduce((a, b) => b.data.attack > a.data.attack ? b : a);
+
+    const bestGridUnit = this.grid.getUnit(best.data.id);
+    if (!bestGridUnit) return null;
+
+    const alreadyInRange = this.grid.distance(gridUnit.pos, bestGridUnit.pos) <= skill.data.range;
+    return alreadyInRange ? null : best;
+  }
+
   private tryRepositionForSkill(
-    unit:         CombatUnit,
-    allies:       CombatUnit[],
-    foes:         CombatUnit[],
-    skills:       Skill[],
-    index:        number,
+    unit: CombatUnit,
+    allies: CombatUnit[],
+    foes: CombatUnit[],
+    skills: Skill[],
+    index: number,
     usedThisTurn: Set<string>,
-    gridUnit:     GridUnit,
-    moveBudget:   number
+    gridUnit: GridUnit,
+    moveBudget: number,
+    priorityTarget: CombatUnit | null
   ): void {
     if (moveBudget <= 0) {
       this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
       return;
     }
 
-    const from   = { ...gridUnit.pos };
-    const result = this.grid.moveTowardNearest(gridUnit, moveBudget);
+    const skill = skills[index];
+    const from = { ...gridUnit.pos };
+
+    let result: { pos: GridPosition; distance: number } | null = null;
+
+    if (priorityTarget) {
+      const targetGridUnit = this.grid.getUnit(priorityTarget.data.id);
+      if (targetGridUnit) {
+        result = this.grid.moveTowardTargetIfReachable(gridUnit, targetGridUnit.pos, skill.data.range, moveBudget);
+      }
+    }
+
+    if (!result) {
+      result = this.grid.moveTowardNearest(gridUnit, moveBudget);
+    }
 
     if (!result) {
       this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
@@ -196,7 +238,6 @@ export class CombatSystem {
     setTimeout(() => {
       if (!this.running) return;
 
-      const skill = skills[index];
       const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
 
       if (liveTargets.length === 0) {

@@ -29,6 +29,14 @@
 - **Limite connue** : la priorité ne s'applique qu'aux cibles déjà en range. Si une meilleure cible existe hors range, elle n'est jamais considérée (le repositionnement ne se déclenche que si aucune cible n'est en range du tout). Voir `07_TODO.md`.
 - Heal de zone (`targetType: 'aoe'` + `targetSide: 'ally'`) : tous les alliés dans la zone sont soignés (event `skill_used` par cible), zone toujours centrée sur le caster (choix simple retenu, pas de ciblage d'origine intelligent pour l'instant)
 
+#### Ciblage intelligent — repositionnement conscient de la priorité (single target)
+- Pour les skills `targetType: 'single'` avec `targetPriority` défini (`lowest_hp`/`highest_attack`), si la meilleure cible n'est pas en range, l'unité se déplace vers elle plutôt que vers l'ennemi le plus proche
+- Sans priorité (`'first'`, comportement par défaut) : repositionnement inchangé, toujours vers la cible la plus proche (maximise le mouvement restant pour la suite du tour)
+- `lowest_hp` compare le **ratio** `currentHp / maxHp`, pas la valeur flat — une unité à faible maxHp et pleine vie n'est plus jugée prioritaire face à une unité à gros maxHp mais fortement endommagée en proportion
+- Le déplacement vise la case atteignable la plus proche du point de départ qui met la cible en range (pas la case la plus proche de la cible) — évite les déplacements superflus quand une case proche suffit déjà
+- `getAoeTargets` (GridSystem) ne coupe plus à 1 candidat pour `single` : toutes les cibles en range remontent, le tri par priorité puis la coupe à 1 se font dans `CombatSystem.applyTargetPriority`
+- Limité aux skills `single` pour l'instant — AOE/`all` restent sur `moveTowardNearest` (maximisation AOE non traitée, voir `07_TODO.md`)
+
 #### Cooldowns en tours
 - `cooldownTurns: 0` → relançable chaque tour
 - `cooldownTurns: N` → N tours d'attente après utilisation

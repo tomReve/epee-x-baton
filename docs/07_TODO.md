@@ -18,9 +18,8 @@
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
 
 ### Ciblage intelligent
-- [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
-- [ ] **Repositionnement conscient de la priorité** : `targetPriority` ne s'applique qu'aux cibles déjà en range. Si la meilleure cible (ex: allié le plus bas en HP) est hors range, elle n'est jamais considérée et l'unité choisit une cible sous-optimale déjà en range plutôt que de se repositionner. `GridSystem.moveTowardNearest` ne connaît que la distance, jamais HP/attack (séparation actée) — nécessite que `CombatSystem` calcule lui-même la case à atteindre en fonction de la meilleure cible par priorité, pas seulement "l'ennemi le plus proche". À traiter avec la maximisation AOE ci-dessus et un ciblage globalement plus intelligent.
-- [ ] Origine de zone pour un heal AOE actuellement toujours centrée sur le caster (choix simple retenu) — à réévaluer si besoin de centrer sur un allié prioritaire, comme pour les dégâts AOE
+- [ ] **Maximiser les cibles touchées par une AOE** (reste à faire) — choisir la position/cible qui touche le plus d'ennemis/alliés pour les skills `aoe`/`all`. `moveTowardNearest` reste utilisé pour ces skills en attendant.
+- [ ] Origine de zone pour un heal AOE actuellement toujours centrée sur le caster — à réévaluer si besoin de centrer sur un allié prioritaire, comme pour les dégâts AOE
 
 ## Priorité moyenne
 

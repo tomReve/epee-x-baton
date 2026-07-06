@@ -150,6 +150,7 @@ export const SKILLS: SkillDefinition[] = [
     cooldownTurns: 0,
     range:         1,
     targetType:    'single',
+    targetPriority: 'lowest_hp', // ajout temporaire
     type:          'physical',
   },
   {

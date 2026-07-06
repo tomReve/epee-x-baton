@@ -236,6 +236,22 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 - `monk_heal` migré : `range: 0 → 3`, `targetSide: 'ally'`, `targetPriority: 'lowest_hp'` (cible l'allié le plus bas en HP à portée, caster inclus)
 - `monk_sanctuary` ajouté : soin de zone (`targetType: 'aoe'`, `targetSide: 'ally'`, `aoe: radius 2`), zone centrée sur le caster
 
+## Phase 10 — Ciblage intelligent (single target)
+
+### Repositionnement conscient de la priorité
+- Skills `targetType: 'single'` avec `targetPriority` (`lowest_hp`/`highest_attack`) : si la meilleure cible est hors range, repositionnement vers elle plutôt que vers l'ennemi le plus proche
+- Sans priorité (`'first'`) : comportement inchangé (plus proche, maximise le mouvement restant)
+- `GridSystem.moveTowardTargetIfReachable(unit, targetPos, range, maxDistance?)` — nouvelle méthode, sélectionne la case atteignable la plus proche du point de départ (pas de la cible) qui satisfait la range du skill
+
+### Fix : lowest_hp en ratio plutôt qu'en flat
+- `currentHp / maxHp` remplace la comparaison flat — une unité à gros maxHp mais fortement endommagée en proportion redevient prioritaire face à une unité à faible maxHp restée intacte
+
+### Fix : single target bornée à 1 candidat trop tôt
+- `GridSystem.getAoeTargets` ne coupe plus à 1 candidat pour `single` avant le tri de priorité — `CombatSystem.applyTargetPriority` trie désormais un ensemble complet de candidats en range, puis coupe à 1 (comportement préservé pour les skills sans priorité)
+
+### Limite actée
+- Uniquement `single` — AOE/`all` restent sur `moveTowardNearest`, maximisation AOE et origine de heal de zone reportées (voir `07_TODO.md`)
+
 ---
 
 ## Bugs résolus notables

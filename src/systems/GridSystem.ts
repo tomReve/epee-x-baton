@@ -120,6 +120,26 @@ export class GridSystem {
     return { pos: best, distance: dist };
   }
 
+  /**
+ * Déplace l'unité vers la case atteignable qui met `targetPos` à portée `range`.
+ * Retourne null si aucune case atteignable ne satisfait cette condition.
+ */
+moveTowardTargetIfReachable(
+  unit: GridUnit, targetPos: GridPosition, range: number, maxDistance?: number
+): { pos: GridPosition; distance: number } | null {
+  const reachable = this.getReachableCells(unit, maxDistance);
+  const inRange = reachable.filter(cell => this.distance(cell, targetPos) <= range);
+  if (inRange.length === 0) return null;
+
+  const best = inRange.reduce((bestCell, cell) =>
+    this.distance(unit.pos, cell) < this.distance(unit.pos, bestCell) ? cell : bestCell
+  );
+
+  const dist = this.distance(unit.pos, best);
+  unit.pos = best;
+  return { pos: best, distance: dist };
+}
+
   /** Déplacement manuel vers une position spécifique (usage futur : input joueur). */
   moveUnit(unit: GridUnit, target: GridPosition): boolean {
     const reachable = this.getReachableCells(unit);
@@ -233,10 +253,8 @@ export class GridSystem {
     }
 
     if (skill.targetType === 'single') {
-      if (side === 'ally') {
-        return this.getTargetsInSkillRange(casterUnit, skill.range, side, true).slice(0, 1);
-      }
-      return this.getTargetsInSkillRange(casterUnit, skill.range, side, false).slice(0, 1);
+      const includeSelf = side === 'ally';
+      return this.getTargetsInSkillRange(casterUnit, skill.range, side, includeSelf);
     }
 
     return [];

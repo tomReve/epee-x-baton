@@ -191,3 +191,15 @@
 **Limite connue** : `moveTowardNearest` se rapproche de l'ennemi le plus proche en général, sans connaître la range ni la forme AOE du skill visé — peut échouer à mettre une cible en portée si le skill a une courte range et l'ennemi est loin. Le ciblage réellement adapté au skill (meilleur positionnement pour une AOE) est noté dans `07_TODO.md`, dépendant du futur "ciblage intelligent".
 
 **`moveRange` uniformisé** : `MOVE_RANGE_NORMAL = 4` introduite dans `heroes.data.ts` et `enemies.data.ts` pour uniformiser la valeur entre unités (remplace les valeurs disparates 2/3 précédentes).
+
+## Ciblage intelligent (single target) — ratio HP plutôt que flat, tri après résolution range
+
+**Contexte** : première implémentation du repositionnement par priorité comparait `currentHp` en valeur flat. Un héros à gros `maxHp` mais fortement endommagé passait derrière un allié à faible `maxHp` intact, alors qu'il était objectivement plus prioritaire à soigner.
+
+**Décision** : `lowest_hp` compare `currentHp / data.maxHp`. `highest_attack` reste sur la valeur flat (pas de notion de "max attack" pertinente ici).
+
+**Bug corrigé au passage** : `GridSystem.getAoeTargets` coupait à 1 candidat pour `targetType: 'single'` avant tout tri de priorité — `CombatSystem.applyTargetPriority` ne recevait donc jamais qu'un seul candidat et ne pouvait pas trier. Le slice à 1 est déplacé dans `applyTargetPriority`, après tri, appliqué systématiquement (avec ou sans priorité définie) pour préserver le comportement historique des skills `'first'`.
+
+**Repositionnement** : la case cible n'est plus choisie par proximité à la cible visée, mais par proximité au point de départ de l'unité (parmi les cases qui mettent la cible en range) — évite un déplacement de plusieurs cases quand une seule aurait suffi pour être en portée.
+
+**Limite actée** : uniquement `targetType: 'single'`. La maximisation AOE (toucher le plus de cibles possible via repositionnement) reste à traiter séparément — voir `07_TODO.md`.

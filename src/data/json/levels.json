@@ -6,13 +6,13 @@
     "order": 1,
     "maxRounds": 15,
     "heroSpawns": [
-      { "heroId": "warrior", "col": 0, "row": 2 },
-      { "heroId": "monk",    "col": 0, "row": 3 }
-    ],
-    "enemySpawns": [
-      { "enemyId": "goblin", "col": 7, "row": 1, "scaleFactor": 0.8 },
-      { "enemyId": "goblin", "col": 7, "row": 4, "scaleFactor": 0.8 }
-    ]
+  { "heroId": "warrior", "col": 3, "row": 2 },
+  { "heroId": "monk",    "col": 0, "row": 3 }
+],
+"enemySpawns": [
+  { "enemyId": "orc", "col": 4, "row": 2, "scaleFactor": 1 },
+  { "enemyId": "goblin",    "col": 6, "row": 4, "scaleFactor": 0.5 }
+]
   },
   {
     "id": "forest_2",

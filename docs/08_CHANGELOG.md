@@ -212,6 +212,32 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 
 ---
 
+## Phase 9 — Ciblage par camp et priorité
+
+### targetSide et targetPriority
+- `SkillDefinition`/`SkillData` : `targetSide?: 'enemy' | 'ally'` (défaut `'enemy'`), `targetPriority?: 'first' | 'lowest_hp' | 'highest_attack'` (défaut `'first'`)
+- `GridSystem.getTargetsInSkillRange(unit, range, side, includeSelf)` — signature paramétrée, remplace l'ancienne version implicitement `'enemy'` sans self
+- `GridSystem.hasAnyTargetInSkillRange` supprimée (inutilisée)
+- `GridSystem.getAoeTargets` : origine de zone forcée sur le caster quand `targetSide: 'ally'` (pas de recherche de cible qui exclurait le caster)
+- `CombatSystem` : `allies` propagé dans toute la chaîne (`processUnitTurn` → `castSkillsSequentially` → `tryRepositionForSkill` → `castSkillNow`), `applyTargetPriority()` trie les cibles déjà résolues (HP/attack), appliqué dans `resolveLiveTargets()`
+- `useSkill()` : le heal boucle désormais sur tous les `targets` (au lieu de `targets[0]` uniquement) — permet le heal de zone
+
+### SkillData dérivé de SkillDefinition
+- `SkillData = Omit<SkillDefinition, 'description' | 'availableFor'>` remplace l'interface dupliquée — un seul endroit à maintenir pour les champs partagés
+- `AoeShape` déplacée dans `game.types.ts`, ré-exportée depuis `entities/Skill.ts` (aucun import existant cassé)
+
+### Preview AOE pilotée par les cibles résolues
+- `CombatEvent.previewTargets: string[]` — ids des cibles déjà résolues par `CombatSystem`, transmis à l'event `skill_preview`
+- `CombatScene.resolvePreviewCells` supprimée (dupliquait `GridSystem.getAoeTargets`) — remplacée par un lookup direct des positions via `previewTargets`
+- `CombatEvent.isHeal` ajouté — `CombatScene` n'a plus besoin de déduire `isHeal` par comparaison `target === source`, fragile dès qu'un heal peut cibler un autre allié
+- **Limite actée** : la preview reflète les cibles réellement ciblées, pas la zone géométrique brute — un heal de zone avec peu d'alliés dans la zone affiche peu de cases. Retrait de la preview envisagé à terme (voir `07_TODO.md`)
+
+### Nouveaux skills
+- `monk_heal` migré : `range: 0 → 3`, `targetSide: 'ally'`, `targetPriority: 'lowest_hp'` (cible l'allié le plus bas en HP à portée, caster inclus)
+- `monk_sanctuary` ajouté : soin de zone (`targetType: 'aoe'`, `targetSide: 'ally'`, `aoe: radius 2`), zone centrée sur le caster
+
+---
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |
@@ -226,3 +252,6 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 | Monk ne lançait jamais ses sorts | `SkillDefinition` injectée directement sans mapping → pas de `isReady()` | Mapping explicite vers `SkillData` dans factory |
 | Sort sans cible terminait tout le tour | `endHeroTurn()` appelé si `liveTargets.length === 0` | Passage au skill suivant à la place |
 | Barre HP décalée (fill vs bg) | Origines inconsistantes entre les deux rectangles | `setOrigin(0, 0.5)` sur les deux, même `x` ancrage gauche |
+| Preview jamais affichée | `previewTargets` non peuplé dans l'event `skill_preview` | Ajout de `previewTargets: liveTargets.map(t => t.data.id)` dans `castSkillNow` |
+| Monk ne se soigne jamais lui-même en repositionnement, mais ne rate pas non plus un autre allié en range | `includeSelf: false` en dur dans `getAoeTargets` pour `targetType: 'single'` dès que `range > 0` | `includeSelf: true` pour tout `side === 'ally'`, indépendamment de la range |
+| Heal de zone ne soigne qu'une seule cible | `useSkill` appliquait le heal sur `targets[0]` uniquement | Boucle sur tous les `targets`, un event `skill_used` par cible |

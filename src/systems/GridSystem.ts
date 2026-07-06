@@ -133,16 +133,15 @@ export class GridSystem {
   // ---------------------------------------------------------------------------
 
   /** Unités adverses dans un rayon de `range` cases. */
-  getTargetsInSkillRange(unit: GridUnit, range: number): GridUnit[] {
-    return Array.from(this.units.values()).filter(other =>
-      other.id !== unit.id
-      && other.isHero !== unit.isHero
-      && this.distance(unit.pos, other.pos) <= range
-    );
-  }
-
-  hasAnyTargetInSkillRange(unit: GridUnit, range: number): boolean {
-    return this.getTargetsInSkillRange(unit, range).length > 0;
+  getTargetsInSkillRange(
+    unit: GridUnit, range: number, side: 'enemy' | 'ally', includeSelf: boolean
+  ): GridUnit[] {
+    return Array.from(this.units.values()).filter(other => {
+      if (!includeSelf && other.id === unit.id) return false;
+      const sameSide = other.isHero === unit.isHero;
+      const matchesSide = side === 'ally' ? sameSide : !sameSide;
+      return matchesSide && this.distance(unit.pos, other.pos) <= range;
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -214,27 +213,30 @@ export class GridSystem {
    * - `all`    : toutes les unités adverses vivantes, sans contrainte de range
    */
   getAoeTargets(casterUnit: GridUnit, skill: SkillData): GridUnit[] {
+    const side = skill.targetSide ?? 'enemy';
+    const matchesSide = (u: GridUnit) =>
+      side === 'ally' ? u.isHero === casterUnit.isHero : u.isHero !== casterUnit.isHero;
+
     if (skill.targetType === 'all') {
-      return Array.from(this.units.values()).filter(u => u.isHero !== casterUnit.isHero);
+      return Array.from(this.units.values()).filter(matchesSide);
     }
 
     if (skill.targetType === 'aoe' && skill.aoe) {
-      const origin = skill.range === 0
+      const origin = skill.range === 0 || side === 'ally'
         ? casterUnit.pos
-        : this.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos;
+        : this.getTargetsInSkillRange(casterUnit, skill.range, side, false)[0]?.pos ?? casterUnit.pos;
 
       const aoeCells = this.getAoeCells(origin, skill.aoe);
       return Array.from(this.units.values()).filter(u =>
-        u.isHero !== casterUnit.isHero
-        && aoeCells.some(c => c.col === u.pos.col && c.row === u.pos.row)
+        matchesSide(u) && aoeCells.some(c => c.col === u.pos.col && c.row === u.pos.row)
       );
     }
 
     if (skill.targetType === 'single') {
-      if (skill.range === 0 && skill.type === 'support') {
-        return [casterUnit];
+      if (side === 'ally') {
+        return this.getTargetsInSkillRange(casterUnit, skill.range, side, true).slice(0, 1);
       }
-      return this.getTargetsInSkillRange(casterUnit, skill.range).slice(0, 1);
+      return this.getTargetsInSkillRange(casterUnit, skill.range, side, false).slice(0, 1);
     }
 
     return [];

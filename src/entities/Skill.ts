@@ -1,20 +1,7 @@
-export interface AoeShape {
-  type:   'radius' | 'line' | 'cross' | 'square' | 'all';
-  value?: number;
-}
+import { SkillDefinition, AoeShape } from '../types/game.types';
 
-export interface SkillData {
-  id:            string;
-  name:          string;
-  damage?:       number;
-  heal?:         number;
-  hits?:         number;
-  cooldownTurns: number;
-  range:         number;        // ✅ portée du skill (remplace attackRange sur l'unité)
-  targetType:    'single' | 'aoe' | 'all';
-  aoe?:          AoeShape;      // ✅ défini uniquement si targetType === 'aoe'
-  type:          'physical' | 'magic' | 'support';
-}
+export type { AoeShape };
+export type SkillData = Omit<SkillDefinition, 'description' | 'availableFor'>;
 
 export class Skill {
   data: SkillData;
@@ -22,7 +9,6 @@ export class Skill {
 
   constructor(data: SkillData) {
     this.data = data;
-    // ✅ Cooldown initial actif dès le début du combat
     this.turnsRemaining = data.cooldownTurns ?? 0;
   }
 
@@ -34,7 +20,6 @@ export class Skill {
     this.turnsRemaining = this.data.cooldownTurns ?? 0;
   }
 
-  // Appelé une fois, à la FIN du tour du héros
   tickCooldown(): void {
     if (this.turnsRemaining > 0) this.turnsRemaining--;
   }

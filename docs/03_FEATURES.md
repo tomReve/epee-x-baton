@@ -21,6 +21,14 @@
 - Les skills sont enchaînés via `castSkillsSequentially` avec délai visuel entre chaque
 - Si un skill n'a pas de cible, on passe au suivant (pas de fin de tour prématurée)
 
+#### Ciblage par camp et priorité
+- `targetSide?: 'enemy' | 'ally'` sur `SkillData` — défaut `'enemy'` si absent (comportement historique inchangé)
+- `targetPriority?: 'first' | 'lowest_hp' | 'highest_attack'` — trie les cibles déjà résolues en range ; `'first'` = comportement historique
+- Le caster est un candidat valide pour un skill `targetSide: 'ally'` (peut se cibler lui-même)
+- Résolution : `GridSystem.getAoeTargets` filtre par camp + géométrie, `CombatSystem.applyTargetPriority` trie ensuite selon les stats (HP/attack) — `GridSystem` reste ignorant des stats de combat
+- **Limite connue** : la priorité ne s'applique qu'aux cibles déjà en range. Si une meilleure cible existe hors range, elle n'est jamais considérée (le repositionnement ne se déclenche que si aucune cible n'est en range du tout). Voir `07_TODO.md`.
+- Heal de zone (`targetType: 'aoe'` + `targetSide: 'ally'`) : tous les alliés dans la zone sont soignés (event `skill_used` par cible), zone toujours centrée sur le caster (choix simple retenu, pas de ciblage d'origine intelligent pour l'instant)
+
 #### Cooldowns en tours
 - `cooldownTurns: 0` → relançable chaque tour
 - `cooldownTurns: N` → N tours d'attente après utilisation
@@ -96,6 +104,8 @@
 - 400ms avant l'impact, les cases touchées sont surlignées
 - Couleur selon le type : orange (physical), violet (magic), vert (support)
 - Légère pulsation via tween alpha
+- Affiche les positions des cibles réellement résolues (`previewTargets`), pas la zone géométrique brute — donc une AOE avec peu de cibles dans la zone affiche peu de cases, pas la zone entière
+- **Statut** : fonctionnalité dont le retrait est envisagé à terme (voir `07_TODO.md` — possible conservation en mode debug uniquement)
 
 #### Floating damage numbers
 - Style : italique, contour épais rouge/vert, rotation -8°, pop d'entrée + montée + fade

@@ -205,12 +205,14 @@ export const SKILLS: SkillDefinition[] = [
   {
     id:            'monk_heal',
     name:          'Heal',
-    description:   'Soin sur le moine lui-même.',
+    description:   'Soin sur l\'allié le plus faible en HP à portée (soi-même inclus).',
     availableFor:  ['monk'],
     heal:          40,
     cooldownTurns: 1,
-    range:         0,
+    range:         3,
     targetType:    'single',
+    targetSide:    'ally',
+    targetPriority: 'lowest_hp',
     type:          'support',
   },
   {
@@ -258,6 +260,19 @@ export const SKILLS: SkillDefinition[] = [
     targetType:    'aoe',
     aoe:           { type: 'square', value: 2 },
     type:          'magic',
+  },
+  {
+    id:            'monk_sanctuary',
+    name:          'Sanctuary',
+    description:   'Soin de zone centré sur le moine, touchant les alliés proches.',
+    availableFor:  ['monk'],
+    heal:          25,
+    cooldownTurns: 5,
+    range:         0,
+    targetType:    'aoe',
+    targetSide:    'ally',
+    aoe:           { type: 'radius', value: 2 },
+    type:          'support',
   },
 
   // -------------------------------------------------------------------------

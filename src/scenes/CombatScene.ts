@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GridPosition, GridSystem, GridUnit } from '../systems/GridSystem';
+import { GridPosition, GridSystem } from '../systems/GridSystem';
 import { CombatSystem, CombatEvent } from '../systems/CombatSystem';
 import { Hero } from '../entities/Hero';
 import { Enemy } from '../entities/Enemy';
@@ -63,6 +63,7 @@ export class CombatScene extends Phaser.Scene {
     private isPaused = false;
 
     private pauseBtn!: Phaser.GameObjects.Container;
+    private restartBtn!: Phaser.GameObjects.Container;
 
     constructor() { super({ key: 'CombatScene' }); }
 
@@ -248,10 +249,18 @@ export class CombatScene extends Phaser.Scene {
     // AOE Preview
     // ---------------------------------------------------------------------------
 
-    private showAoePreview(skill: SkillData, casterUnit: GridUnit): void {
+    private showAoePreview(skill: SkillData, targetIds: string[]): void {
         this.clearAoePreview();
 
-        const cells = this.resolvePreviewCells(skill, casterUnit);
+        const cells = targetIds
+            .map(id => this.grid.getUnit(id)?.pos)
+            .filter((p): p is GridPosition => p !== undefined);
+
+        console.log(targetIds)    
+        console.log(targetIds
+            .map(id => this.grid.getUnit(id)?.pos))
+        console.log('showAoePreview', skill.name, targetIds, cells);
+
         if (cells.length === 0) return;
 
         const g = this.aoePreviewGraphics;
@@ -278,33 +287,6 @@ export class CombatScene extends Phaser.Scene {
         this.tweens.killTweensOf(this.aoePreviewGraphics);
         this.aoePreviewGraphics.clear();
         this.aoePreviewGraphics.setAlpha(1);
-    }
-
-    /**
-     * Résout les cases à surligner pour la preview.
-     * Duplique volontairement la logique de GridSystem.getAoeTargets
-     * pour retourner des GridPosition (cases) plutôt que des GridUnit.
-     */
-    private resolvePreviewCells(skill: SkillData, casterUnit: GridUnit): GridPosition[] {
-        if (skill.targetType === 'all') {
-            return this.grid.getAllUnits()
-                .filter(u => u.isHero !== casterUnit.isHero)
-                .map(u => u.pos);
-        }
-
-        if (skill.targetType === 'aoe' && skill.aoe) {
-            const origin = skill.range === 0
-                ? casterUnit.pos
-                : this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0]?.pos ?? casterUnit.pos;
-            return this.grid.getAoeCells(origin, skill.aoe);
-        }
-
-        if (skill.range === 0 && skill.type === 'support') {
-            return [casterUnit.pos];
-        }
-
-        const target = this.grid.getTargetsInSkillRange(casterUnit, skill.range)[0];
-        return target ? [target.pos] : [];
     }
 
     private showFloatingTextAt(x: number, y: number, value: number, isHeal: boolean, offsetX = 0): void {
@@ -363,7 +345,7 @@ export class CombatScene extends Phaser.Scene {
 
             case 'skill_used': {
                 const hitIndex = event.hitIndex ?? 0;
-                const isHeal = event.target === event.source;
+                const isHeal = event.isHeal ?? false;
 
                 if (hitIndex === 0) this.unitAnimators.get(event.source!)?.play('attack');
                 this.flashSprite(event.target!);
@@ -390,8 +372,7 @@ export class CombatScene extends Phaser.Scene {
             }
 
             case 'skill_preview': {
-                const casterUnit = this.grid.getUnit(event.source!);
-                if (casterUnit && event.skillData) this.showAoePreview(event.skillData, casterUnit);
+                this.showAoePreview(event.skillData!, event.previewTargets ?? []);
                 return;
             }
 

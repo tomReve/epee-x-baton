@@ -21,6 +21,10 @@ export type SkillTargetType = 'single' | 'aoe' | 'all';
 
 export type SkillEffectType = 'physical' | 'magic' | 'support';
 
+export type SkillTargetSide = 'enemy' | 'ally';
+
+export type SkillTargetPriority = 'first' | 'lowest_hp' | 'highest_attack';
+
 export type AoeShapeType = 'radius' | 'square' | 'cross' | 'line' | 'all';
 
 // ---------------------------------------------------------------------------
@@ -55,13 +59,15 @@ export interface SkillDefinition {
   id:            string;
   name:          string;
   description:   string;
-  availableFor:  HeroClass[];   // classes qui peuvent équiper ce skill (vide = tous)
+  availableFor:  HeroClass[];
   damage?:       number;
   heal?:         number;
-  hits?:         number;        // nombre de coups (défaut: 1)
-  cooldownTurns: number;        // 0 = relançable chaque tour
-  range:         number;        // 0 = centré sur le caster
+  hits?:         number;
+  cooldownTurns: number;
+  range:         number;
   targetType:    SkillTargetType;
+  targetSide?:   SkillTargetSide;
+  targetPriority?: SkillTargetPriority;
   aoe?:          AoeShape;
   type:          SkillEffectType;
 }

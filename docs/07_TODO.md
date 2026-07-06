@@ -17,17 +17,17 @@
 - [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
 
-### Ciblage intelligent et ciblage allié (heal/buff)
+### Ciblage intelligent
 - [ ] Maximiser les cibles touchées par une AOE (choisir la position/cible qui touche le plus d'ennemis)
-- [ ] Cibler le plus faible (pour finir rapidement)
-- [ ] Cibler le plus dangereux (celui avec le plus d'ATK)
-- [ ] Configurable par skill (exemple : monocible avec gros dégat focus le monstre avec le plus de HP, sort pour cibler les ennemis avec le moins / le plus de PV)
-- [ ] `targetSide: 'enemy' | 'ally'` dans `SkillData`
-- [ ] Permettre aux skills de soin de cibler l'allié le plus bas en HP
-- [ ] Le soin actuel est uniquement sur le caster — à étendre
-- [ ] Les soins et buff peuvent être de zone
+- [ ] **Repositionnement conscient de la priorité** : `targetPriority` ne s'applique qu'aux cibles déjà en range. Si la meilleure cible (ex: allié le plus bas en HP) est hors range, elle n'est jamais considérée et l'unité choisit une cible sous-optimale déjà en range plutôt que de se repositionner. `GridSystem.moveTowardNearest` ne connaît que la distance, jamais HP/attack (séparation actée) — nécessite que `CombatSystem` calcule lui-même la case à atteindre en fonction de la meilleure cible par priorité, pas seulement "l'ennemi le plus proche". À traiter avec la maximisation AOE ci-dessus et un ciblage globalement plus intelligent.
+- [ ] Origine de zone pour un heal AOE actuellement toujours centrée sur le caster (choix simple retenu) — à réévaluer si besoin de centrer sur un allié prioritaire, comme pour les dégâts AOE
 
 ## Priorité moyenne
+
+### Avenir de la preview AOE
+- [ ] Décision à terme : retirer la preview AOE du gameplay normal
+- [ ] Possible conservation en mode debug uniquement (toggle dev)
+- [ ] Si conservée en debug : décider si elle doit alors afficher la vraie zone géométrique (`getAoeCells`) plutôt que les seules cases occupées par des cibles résolues (comportement actuel)
 
 ### Skills avec déplacement ou crowd control
 - [ ] Implémenter la possibilité d'avoir des skills qui déplace le personnage avant ou après l'attaque (dash, jump, teleportation, etc)

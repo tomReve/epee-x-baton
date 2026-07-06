@@ -30,6 +30,8 @@ export interface CombatEvent {
   totalHits?: number;
   skillId?:   string;
   skillData?: SkillData;
+  previewTargets?: string[];
+  isHeal?:    boolean;
 }
 
 export type CombatEventCallback = (event: CombatEvent) => void;
@@ -101,25 +103,47 @@ export class CombatSystem {
     const foes   = unit.isHero ? this.enemies : this.heroes;
     const self   = allies.find(u => u.data.id === unit.id)!;
 
-    this.processUnitTurn(self, foes);
+    this.processUnitTurn(self, allies, foes);
   }
 
-  private processUnitTurn(unit: CombatUnit, foes: CombatUnit[]): void {
+  private processUnitTurn(unit: CombatUnit, allies: CombatUnit[], foes: CombatUnit[]): void {
     const gridUnit = this.grid.getUnit(unit.data.id)!;
-    this.executeSkills(unit, foes, gridUnit.moveRange);
+    this.executeSkills(unit, allies, foes, gridUnit.moveRange);
   }
 
-  private executeSkills(unit: CombatUnit, foes: CombatUnit[], moveBudget: number): void {
+  private executeSkills(unit: CombatUnit, allies: CombatUnit[], foes: CombatUnit[], moveBudget: number): void {
     const ready = unit.skills.filter(s => s.isReady());
     if (ready.length === 0) {
       this.endTurn(unit, null);
       return;
     }
-    this.castSkillsSequentially(unit, foes, ready, 0, new Set(), moveBudget);
+    this.castSkillsSequentially(unit, allies, foes, ready, 0, new Set(), moveBudget);
+  }
+
+  private applyTargetPriority(skill: SkillData, targets: CombatUnit[]): CombatUnit[] {
+    const priority = skill.targetPriority ?? 'first';
+    if (priority === 'first' || targets.length <= 1) return targets;
+
+    const sorted = [...targets];
+    if (priority === 'lowest_hp') sorted.sort((a, b) => a.currentHp - b.currentHp);
+    if (priority === 'highest_attack') sorted.sort((a, b) => b.data.attack - a.data.attack);
+
+    return skill.targetType === 'single' ? sorted.slice(0, 1) : sorted;
+  }
+
+  private resolveLiveTargets(
+    allies: CombatUnit[], foes: CombatUnit[], gridUnit: GridUnit, skill: Skill
+  ): CombatUnit[] {
+    const candidates = skill.data.targetSide === 'ally' ? allies : foes;
+    const raw = this.grid.getAoeTargets(gridUnit, skill.data)
+      .map(t => candidates.find(c => c.data.id === t.id && c.isAlive()))
+      .filter((c): c is CombatUnit => c !== undefined);
+    return this.applyTargetPriority(skill.data, raw);
   }
 
   private castSkillsSequentially(
     unit:         CombatUnit,
+    allies:       CombatUnit[],
     foes:         CombatUnit[],
     skills:       Skill[],
     index:        number,
@@ -133,21 +157,19 @@ export class CombatSystem {
 
     const skill    = skills[index];
     const gridUnit = this.grid.getUnit(unit.data.id)!;
-
-    const liveTargets = this.grid.getAoeTargets(gridUnit, skill.data)
-      .map(t => foes.find(f => f.data.id === t.id && f.isAlive()))
-      .filter((f): f is CombatUnit => f !== undefined);
+    const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
 
     if (liveTargets.length === 0 && skill.data.type !== 'support') {
-      this.tryRepositionForSkill(unit, foes, skills, index, usedThisTurn, gridUnit, moveBudget);
+      this.tryRepositionForSkill(unit, allies, foes, skills, index, usedThisTurn, gridUnit, moveBudget);
       return;
     }
 
-    this.castSkillNow(unit, foes, skills, index, usedThisTurn, skill, liveTargets, moveBudget);
+    this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, moveBudget);
   }
 
   private tryRepositionForSkill(
     unit:         CombatUnit,
+    allies:       CombatUnit[],
     foes:         CombatUnit[],
     skills:       Skill[],
     index:        number,
@@ -156,7 +178,7 @@ export class CombatSystem {
     moveBudget:   number
   ): void {
     if (moveBudget <= 0) {
-      this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
+      this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
       return;
     }
 
@@ -164,7 +186,7 @@ export class CombatSystem {
     const result = this.grid.moveTowardNearest(gridUnit, moveBudget);
 
     if (!result) {
-      this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
+      this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
       return;
     }
 
@@ -175,21 +197,20 @@ export class CombatSystem {
       if (!this.running) return;
 
       const skill = skills[index];
-      const liveTargets = this.grid.getAoeTargets(gridUnit, skill.data)
-        .map(t => foes.find(f => f.data.id === t.id && f.isAlive()))
-        .filter((f): f is CombatUnit => f !== undefined);
+      const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
 
       if (liveTargets.length === 0) {
-        this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, remainingBudget);
+        this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, remainingBudget);
         return;
       }
 
-      this.castSkillNow(unit, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
+      this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
     }, this.MOVE_ANIM_DELAY);
   }
 
   private castSkillNow(
     unit:         CombatUnit,
+    allies:       CombatUnit[],
     foes:         CombatUnit[],
     skills:       Skill[],
     index:        number,
@@ -198,7 +219,7 @@ export class CombatSystem {
     liveTargets:  CombatUnit[],
     moveBudget:   number
   ): void {
-    this.onEvent({ type: 'skill_preview', source: unit.data.id, skillData: skill.data });
+    this.onEvent({ type: 'skill_preview', source: unit.data.id, skillData: skill.data, previewTargets: liveTargets.map(t => t.data.id) });
 
     setTimeout(() => {
       if (!this.running) return;
@@ -210,7 +231,7 @@ export class CombatSystem {
 
       setTimeout(() => {
         if (!this.running) return;
-        this.castSkillsSequentially(unit, foes, skills, index + 1, usedThisTurn, moveBudget);
+        this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
       }, animDelay);
     }, PREVIEW_DELAY);
   }
@@ -226,16 +247,20 @@ export class CombatSystem {
     }
 
     if (skill.data.heal) {
-      unit.heal(skill.data.heal);
-      this.onEvent({
-        type:      'skill_used',
-        source:    unit.data.id,
-        target:    unit.data.id,
-        value:     skill.data.heal,
-        skillName: skill.data.name,
-        hitIndex:  0,
-        totalHits: 1,
-      });
+      const healTargets = targets.length > 0 ? targets : [unit];
+      for (const target of healTargets) {
+        target.heal(skill.data.heal);
+        this.onEvent({
+          type:      'skill_used',
+          source:    unit.data.id,
+          target:    target.data.id,
+          value:     skill.data.heal,
+          skillName: skill.data.name,
+          hitIndex:  0,
+          totalHits: 1,
+          isHeal:    true,
+        });
+      }
     }
 
     return totalDelay + this.ATTACK_ANIM_DELAY;

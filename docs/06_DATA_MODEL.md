@@ -39,6 +39,8 @@ interface SkillDefinition {
   cooldownTurns: number;         // 0 = relançable chaque tour
   range:         number;         // 0 = centré sur le caster
   targetType:    SkillTargetType;
+  targetSide?:   'enemy' | 'ally';        // défaut: 'enemy' si absent
+  targetPriority?: 'first' | 'lowest_hp' | 'highest_attack';  // défaut: 'first' si absent
   aoe?:          AoeShape;       // uniquement si targetType === 'aoe'
   type:          SkillEffectType;
 }
@@ -46,7 +48,7 @@ interface SkillDefinition {
 
 ### `SkillData` (format attendu par l'entité `Skill`, `entities/Skill.ts`)
 
-Sous-ensemble de `SkillDefinition` sans `description` et `availableFor`. Produit par `combat.factory.ts`.
+`SkillData = Omit<SkillDefinition, 'description' | 'availableFor'>`. La relation de sous-ensemble est portée par le type système plutôt qu'une interface dupliquée. Produit par `combat.factory.ts` (le mapping filtre toujours les deux champs, mais n'a plus besoin de recopier chaque champ ajouté à `SkillDefinition`).
 
 ### `Skill` (entité runtime)
 
@@ -270,6 +272,8 @@ interface CombatEvent {
   round?:     number;
   hitIndex?:  number;           // index du coup dans un multi-hit (0-based)
   totalHits?: number;
+  previewTargets?: string[];    // ids des unités réellement ciblées, pour la preview AOE
+  isHeal?:    boolean;          // distingue soin/dégât dans skill_used (plutôt que déduire via target === source)
 }
 ```
 

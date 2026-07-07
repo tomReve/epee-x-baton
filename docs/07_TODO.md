@@ -18,7 +18,6 @@
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
 
 ### Ciblage intelligent
-- [ ] **Maximiser les cibles touchées par une AOE** (reste à faire) — choisir la position/cible qui touche le plus d'ennemis/alliés pour les skills `aoe`/`all`. `moveTowardNearest` reste utilisé pour ces skills en attendant.
 - [ ] Origine de zone pour un heal AOE actuellement toujours centrée sur le caster — à réévaluer si besoin de centrer sur un allié prioritaire, comme pour les dégâts AOE
 
 ## Priorité moyenne

@@ -93,5 +93,22 @@
       { "enemyId": "skeleton", "col": 7, "row": 4, "scaleFactor": 1.3 },
       { "enemyId": "lich",     "col": 6, "row": 2, "scaleFactor": 1.0 }
     ]
+  },
+  {
+    "id": "test_aoe_maximize",
+    "name": "Test — Maximisation AOE",
+    "zone": "foret",
+    "order": 99,
+    "maxRounds": 15,
+    "heroSpawns": [
+      { "heroId": "warrior", "col": 0, "row": 5 },
+      { "heroId": "monk",    "col": 0, "row": 3 }
+    ],
+    "enemySpawns": [
+      { "enemyId": "goblin", "col": 5, "row": 0, "scaleFactor": 0.4 },
+      { "enemyId": "goblin", "col": 6, "row": 0, "scaleFactor": 0.4 },
+      { "enemyId": "goblin", "col": 5, "row": 1, "scaleFactor": 0.4 },
+      { "enemyId": "orc",    "col": 7, "row": 4, "scaleFactor": 0.4 }
+    ]
   }
 ]

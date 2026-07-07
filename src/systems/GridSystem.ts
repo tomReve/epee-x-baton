@@ -259,4 +259,63 @@ moveTowardTargetIfReachable(
 
     return [];
   }
+
+  /**
+ * Cherche la case atteignable qui maximise le nombre de cibles adverses
+ * touchées par la forme AOE du skill. Simule getAoeCells sur chaque case
+ * candidate (origine = la case elle-même si range 0, sinon meilleure cible
+ * adverse atteignable depuis cette case).
+ */
+  findBestAoePosition(
+    unit: GridUnit, skill: SkillData, maxDistance?: number
+  ): { pos: GridPosition; distance: number; hitCount: number } | null {
+    if (!skill.aoe) return null;
+
+    const side = skill.targetSide ?? 'enemy';
+    const matchesSide = (u: GridUnit) =>
+      side === 'ally' ? u.isHero === unit.isHero : u.isHero !== unit.isHero;
+
+    const foes = Array.from(this.units.values()).filter(u => matchesSide(u) && u.id !== unit.id);
+    const reachable = this.getReachableCells(unit, maxDistance);
+    if (reachable.length === 0) return null;
+
+    let best: { pos: GridPosition; distance: number; hitCount: number } | null = null;
+
+    for (const cell of reachable) {
+      let originsToTry: GridPosition[];
+
+      if (skill.range === 0) {
+        originsToTry = [cell];
+      } else {
+        originsToTry = foes
+          .filter(f => this.distance(cell, f.pos) <= skill.range)
+          .map(f => f.pos);
+        if (originsToTry.length === 0) continue;
+      }
+
+      let bestHitCountForCell = 0;
+      for (const origin of originsToTry) {
+        const aoeCells = this.getAoeCells(origin, skill.aoe);
+        const hitCount = foes.filter(f =>
+          aoeCells.some(c => c.col === f.pos.col && c.row === f.pos.row)
+        ).length;
+        if (hitCount > bestHitCountForCell) bestHitCountForCell = hitCount;
+      }
+
+      const dist = this.distance(unit.pos, cell);
+      if (
+        !best ||
+        bestHitCountForCell > best.hitCount ||
+        (bestHitCountForCell === best.hitCount && dist < best.distance)
+      ) {
+        best = { pos: cell, distance: dist, hitCount: bestHitCountForCell };
+      }
+    }
+
+    return best;
+  }
+
+  moveToPosition(unit: GridUnit, pos: GridPosition): void {
+    unit.pos = pos;
+  }
 }

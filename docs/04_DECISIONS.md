@@ -202,4 +202,16 @@
 
 **Repositionnement** : la case cible n'est plus choisie par proximité à la cible visée, mais par proximité au point de départ de l'unité (parmi les cases qui mettent la cible en range) — évite un déplacement de plusieurs cases quand une seule aurait suffi pour être en portée.
 
-**Limite actée** : uniquement `targetType: 'single'`. La maximisation AOE (toucher le plus de cibles possible via repositionnement) reste à traiter séparément — voir `07_TODO.md`.
+---
+
+## Ciblage intelligent AOE — maximisation systématique, géométrie centralisée dans GridSystem
+
+**Contexte** : le repositionnement AOE ne se déclenchait auparavant qu'en fallback (`liveTargets.length === 0`), sur `moveTowardNearest` — sans connaissance de la forme AOE ni de son impact réel. Une unité pouvait rester sur une case sous-optimale dès lors qu'elle touchait au moins 1 ennemi.
+
+**Décision** : la vérification devient systématique pour tout skill `targetType: 'aoe'` offensif (`targetSide` absent ou `'enemy'`), avant le flux de repositionnement existant. `GridSystem.findBestAoePosition(unit, skill, maxDistance?)` simule `getAoeCells` sur chaque case atteignable et retourne celle qui maximise le nombre d'ennemis touchés (égalité → case la plus proche du point de départ). Le déplacement n'a lieu que si strictement meilleur que la position actuelle, pour ne pas gaspiller de `moveBudget`.
+
+**Placement dans GridSystem plutôt que CombatSystem** : la logique reste de la géométrie pure (aucune dépendance aux stats de combat), cohérente avec la répartition des responsabilités déjà en place (`GridSystem` = géométrie, `CombatSystem` = orchestration). Pas de duplication introduite.
+
+**Mutation de position centralisée** : ajout de `GridSystem.moveToPosition(unit, pos)`, utilisée par `CombatSystem` pour appliquer le déplacement retenu — garde toute mutation de `GridUnit.pos` dans `GridSystem`, cohérent avec `moveTowardNearest`/`moveTowardTargetIfReachable`.
+
++**Limite actée** : hors scope pour `targetType: 'all'` (pas de position pertinente) et les heals de zone AOE (`targetSide: 'ally'`) — cf. item `07_TODO.md` déjà existant sur l'origine des heals de zone.

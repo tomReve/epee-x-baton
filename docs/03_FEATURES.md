@@ -26,7 +26,6 @@
 - `targetPriority?: 'first' | 'lowest_hp' | 'highest_attack'` — trie les cibles déjà résolues en range ; `'first'` = comportement historique
 - Le caster est un candidat valide pour un skill `targetSide: 'ally'` (peut se cibler lui-même)
 - Résolution : `GridSystem.getAoeTargets` filtre par camp + géométrie, `CombatSystem.applyTargetPriority` trie ensuite selon les stats (HP/attack) — `GridSystem` reste ignorant des stats de combat
-- **Limite connue** : la priorité ne s'applique qu'aux cibles déjà en range. Si une meilleure cible existe hors range, elle n'est jamais considérée (le repositionnement ne se déclenche que si aucune cible n'est en range du tout). Voir `07_TODO.md`.
 - Heal de zone (`targetType: 'aoe'` + `targetSide: 'ally'`) : tous les alliés dans la zone sont soignés (event `skill_used` par cible), zone toujours centrée sur le caster (choix simple retenu, pas de ciblage d'origine intelligent pour l'instant)
 
 #### Ciblage intelligent — repositionnement conscient de la priorité (single target)
@@ -35,7 +34,15 @@
 - `lowest_hp` compare le **ratio** `currentHp / maxHp`, pas la valeur flat — une unité à faible maxHp et pleine vie n'est plus jugée prioritaire face à une unité à gros maxHp mais fortement endommagée en proportion
 - Le déplacement vise la case atteignable la plus proche du point de départ qui met la cible en range (pas la case la plus proche de la cible) — évite les déplacements superflus quand une case proche suffit déjà
 - `getAoeTargets` (GridSystem) ne coupe plus à 1 candidat pour `single` : toutes les cibles en range remontent, le tri par priorité puis la coupe à 1 se font dans `CombatSystem.applyTargetPriority`
-- Limité aux skills `single` pour l'instant — AOE/`all` restent sur `moveTowardNearest` (maximisation AOE non traitée, voir `07_TODO.md`)
+
+#### Ciblage intelligent — maximisation AOE
+- Pour les skills `targetType: 'aoe'` offensifs (`targetSide` absent ou `'enemy'`), le système recherche systématiquement, parmi toutes les cases atteignables, celle qui maximise le nombre d'ennemis touchés par la zone — pas seulement en fallback quand 0 cible n'est en portée
+- Le repositionnement n'a lieu que si une case atteignable touche **strictement plus** d'ennemis que la position actuelle (sinon le `moveBudget` est préservé pour la suite du tour)
+- `range: 0` (AOE centrée sur le caster, ex: Whirlwind, Shockwave) : chaque case candidate est elle-même testée comme origine de zone
+- `range > 0` (ex: Rain of Arrows, Nova) : pour chaque case candidate, toutes les cibles adverses atteignables depuis cette case servent d'origine potentielle, le meilleur score parmi elles est retenu
+- `GridSystem.findBestAoePosition(unit, skill, maxDistance?)` — nouvelle méthode, géométrie pure, réutilise `getAoeCells`
+- Égalité de score : la case la plus proche du point de départ est privilégiée (cohérent avec le principe déjà en place pour le ciblage single-target)
+- Hors scope : `targetType: 'all'` (pas de notion de position), heals de zone (`targetSide: 'ally'`) — la maximisation AOE pour un heal reste dans `07_TODO.md`
 
 #### Cooldowns en tours
 - `cooldownTurns: 0` → relançable chaque tour

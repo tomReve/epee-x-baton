@@ -250,7 +250,15 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 - `GridSystem.getAoeTargets` ne coupe plus à 1 candidat pour `single` avant le tri de priorité — `CombatSystem.applyTargetPriority` trie désormais un ensemble complet de candidats en range, puis coupe à 1 (comportement préservé pour les skills sans priorité)
 
 ### Limite actée
-- Uniquement `single` — AOE/`all` restent sur `moveTowardNearest`, maximisation AOE et origine de heal de zone reportées (voir `07_TODO.md`)
+- Uniquement `single` — AOE/`all` restent sur `moveTowardNearest`, maximisation AOE et origine de heal de zone reportées
+
+## Phase 11 — Ciblage intelligent (AOE)
+
+### Maximisation systématique des cibles AOE
+- `GridSystem.findBestAoePosition(unit, skill, maxDistance?)` — nouvelle méthode, teste chaque case atteignable, simule `getAoeCells` (origine = case elle-même si `range: 0`, sinon meilleure cible adverse atteignable depuis la case), retourne la case au meilleur `hitCount` (égalité → distance minimale)
+- `CombatSystem.castSkillsSequentially` : nouvelle branche avant le check de repositionnement existant, déclenchée pour tout skill `targetType: 'aoe'` avec `targetSide` absent ou `'enemy'` — le repositionnement a lieu même si la position actuelle touche déjà des cibles, dès qu'une case atteignable fait strictement mieux
+- `GridSystem.moveToPosition(unit, pos)` — nouvelle méthode, centralise la mutation de position appliquée depuis `CombatSystem`
+- Hors scope : `targetType: 'all'`, heals de zone (`targetSide: 'ally'`)
 
 ---
 

@@ -159,6 +159,29 @@ export class CombatSystem {
 
     const skill = skills[index];
     const gridUnit = this.grid.getUnit(unit.data.id)!;
+
+    if (skill.data.targetType === 'aoe' && (skill.data.targetSide ?? 'enemy') === 'enemy' && moveBudget > 0) {
+      const liveTargetsNow = this.resolveLiveTargets(allies, foes, gridUnit, skill);
+      const currentHitCount = liveTargetsNow.length;
+
+      const bestPosition = this.grid.findBestAoePosition(gridUnit, skill.data, moveBudget);
+
+      if (bestPosition && bestPosition.hitCount > currentHitCount) {
+        const from = { ...gridUnit.pos };
+        this.grid.moveToPosition(gridUnit, bestPosition.pos);
+        const remainingBudget = moveBudget - bestPosition.distance;
+
+        this.onEvent({ type: 'unit_moved', source: unit.data.id, fromPos: from, toPos: bestPosition.pos });
+
+        setTimeout(() => {
+          if (!this.running) return;
+          const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
+          this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
+        }, this.MOVE_ANIM_DELAY);
+        return;
+      }
+    }
+
     const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
 
     const priorityTarget = this.findUnreachedPriorityTarget(skill, allies, foes, gridUnit);

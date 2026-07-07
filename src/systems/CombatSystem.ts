@@ -160,7 +160,7 @@ export class CombatSystem {
     const skill = skills[index];
     const gridUnit = this.grid.getUnit(unit.data.id)!;
 
-    if (skill.data.targetType === 'aoe' && (skill.data.targetSide ?? 'enemy') === 'enemy' && moveBudget > 0) {
+    if (skill.data.targetType === 'aoe' && moveBudget > 0) {
       const liveTargetsNow = this.resolveLiveTargets(allies, foes, gridUnit, skill);
       const currentHitCount = liveTargetsNow.length;
 

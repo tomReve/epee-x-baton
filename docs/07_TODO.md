@@ -2,6 +2,15 @@
 
 ## Priorité haute (prochaines sessions)
 
+### Contrôle de vitesse de combat
+- [ ] Vitesse x2 / x4 pour accélérer les combats longs (standard du genre auto-battler)
+
+### Tests unitaires (remonté de priorité basse)
+- [ ] Tests sur `GridSystem.getAoeTargets` — zone touchée par quasi toutes les features à venir (stun, shield, ciblage intelligent)
+- [ ] Tests sur le système de cooldown — historique de bug déjà rencontré (cooldown qui se relançait)
+- [ ] Tests sur `TurnSystem` (ordre, gestion des morts)
+- [ ] À faire avant d'attaquer les effets de statut pour sécuriser une base de non-régression
+
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)
 - [ ] Burn (case appliquant des dégats sous certaines conditions)
@@ -16,9 +25,6 @@
 - [ ] Contre (renvoi de dégats)
 - [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
-
-### Ciblage intelligent
-- [ ] Origine de zone pour un heal AOE actuellement toujours centrée sur le caster — à réévaluer si besoin de centrer sur un allié prioritaire, comme pour les dégâts AOE
 
 ## Priorité moyenne
 
@@ -74,12 +80,6 @@
 - [ ] `PlayerHeroState.equipment: EquipmentId[]` déjà prévu
 - [ ] Bonus de stats ou de skills
 
-### Tests unitaires (remonté de priorité basse)
-- [ ] Tests sur `GridSystem.getAoeTargets` — zone touchée par quasi toutes les features à venir (stun, shield, ciblage intelligent)
-- [ ] Tests sur le système de cooldown — historique de bug déjà rencontré (cooldown qui se relançait)
-- [ ] Tests sur `TurnSystem` (ordre, gestion des morts)
-- [ ] À faire avant d'attaquer les effets de statut pour sécuriser une base de non-régression
-
 ## Priorité basse
 
 ### Définir l'identité des classes et une bonne base de skills
@@ -126,9 +126,6 @@
 - [ ] Chat serveur (décoratif, style Sword x Staff)
 - [ ] Indicateur de tour actif sur le sprite de l'unité (cercle lumineux au sol)
 
-### Contrôle de vitesse de combat
-- [ ] Vitesse x2 / x4 pour accélérer les combats longs (standard du genre auto-battler)
-
 ### Hot-reload
 - [ ] Hot-reload des données JSON sans restart du serveur de dev
 
@@ -145,4 +142,3 @@
 ## Veille technique (pas d'action requise pour l'instant)
 - [ ] `isHero` existe en triple source (`GridUnit.isHero`, `TurnUnit.isHero`, appartenance à `heroes[]`/`enemies[]` dans `CombatSystem`) — à surveiller si une feature (invocation, pet temporaire) introduit une unité qui change de camp ou n'est pas connue à la construction du combat
 - [ ] `CombatSystem.handleDeath` suppose `this.heroes`/`this.enemies` figés depuis le début du combat pour la détection victoire/défaite — à revoir si une feature d'invocation en cours de combat est ajoutée
-- [ ] `resolvePreviewCells` dans `CombatScene.ts` reste une duplication assumée de `GridSystem.getAoeTargets` (déjà documentée dans `04_DECISIONS.md`) — à réévaluer si la logique de ciblage diverge davantage (ex: ciblage intelligent, ciblage allié)

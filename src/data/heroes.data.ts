@@ -95,6 +95,6 @@ export const DEFAULT_PLAYER_HERO_STATES: PlayerHeroState[] = [
     heroId:         'monk',
     level:          1,
     xp:             0,
-    equippedSkills: ['monk_holy_strike', 'monk_heal', 'monk_holy_cross', 'monk_meteor'],
+    equippedSkills: ['monk_sanctuary', 'monk_heal', 'monk_holy_cross', 'monk_meteor'],
   },
 ];

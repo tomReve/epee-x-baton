@@ -214,4 +214,18 @@
 
 **Mutation de position centralisée** : ajout de `GridSystem.moveToPosition(unit, pos)`, utilisée par `CombatSystem` pour appliquer le déplacement retenu — garde toute mutation de `GridUnit.pos` dans `GridSystem`, cohérent avec `moveTowardNearest`/`moveTowardTargetIfReachable`.
 
-+**Limite actée** : hors scope pour `targetType: 'all'` (pas de position pertinente) et les heals de zone AOE (`targetSide: 'ally'`) — cf. item `07_TODO.md` déjà existant sur l'origine des heals de zone.
+**Limite actée** : hors scope pour `targetType: 'all'` (pas de position pertinente).
+
+---
+
+## Extension de la maximisation AOE aux heals de zone (`targetSide: 'ally'`)
+
+**Contexte** : `castSkillsSequentially` restreignait le déclenchement de la maximisation AOE à `targetSide === 'enemy'`. `findBestAoePosition` excluait systématiquement le caster de la liste des cibles comptées (`u.id !== unit.id`), correct pour les dégâts (on ne repositionne pas une unité pour se frapper elle-même) mais incorrect pour un heal ally où le caster est une cible légitime de son propre sort.
+
+**Décision** :
+- `castSkillsSequentially` : retrait de la restriction `(skill.data.targetSide ?? 'enemy') === 'enemy'` — la maximisation s'applique désormais à tout `targetType: 'aoe'`
+- `findBestAoePosition` : ajout d'un `includeSelf = side === 'ally'`, aligné sur la même règle déjà en place dans `getAoeTargets` — le caster compte comme cible valide quand `targetSide: 'ally'`
+
+**Bug découvert pendant l'implémentation** : sans ce fix, `currentHitCount` (calculé via `getAoeTargets`, qui incluait déjà correctement le caster) et `bestPosition.hitCount` (calculé via `findBestAoePosition`, qui l'excluait) n'étaient jamais comparables correctement — le caster comptait sur la position actuelle mais jamais sur les positions candidates, rendant la condition `bestPosition.hitCount > currentHitCount` quasiment toujours fausse même quand un déplacement était objectivement meilleur.
+
+**Limite actée** : reste hors scope un heal de zone avec `range > 0` (origine centrée sur un allié à distance plutôt que sur le caster) — testé et écarté : la règle `range: 0 = centré sur le caster` (`02_RULES.md`) est volontairement stricte pour les heals de zone, aucune origine alternative n'est recherchée. Un `range > 0` sur un heal AOE n'est pas un cas supporté par le modèle actuel.

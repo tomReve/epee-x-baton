@@ -256,11 +256,6 @@ export class CombatScene extends Phaser.Scene {
             .map(id => this.grid.getUnit(id)?.pos)
             .filter((p): p is GridPosition => p !== undefined);
 
-        console.log(targetIds)    
-        console.log(targetIds
-            .map(id => this.grid.getUnit(id)?.pos))
-        console.log('showAoePreview', skill.name, targetIds, cells);
-
         if (cells.length === 0) return;
 
         const g = this.aoePreviewGraphics;

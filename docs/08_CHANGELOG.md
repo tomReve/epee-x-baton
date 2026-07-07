@@ -262,6 +262,18 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 
 ---
 
+## Phase 12 — Ciblage intelligent AOE étendu aux heals de zone
+
+### Extension de la maximisation AOE aux heals ally
+- `CombatSystem.castSkillsSequentially` : retrait de la restriction `targetSide === 'enemy'` sur le déclenchement de `findBestAoePosition`
+- `GridSystem.findBestAoePosition` : ajout de `includeSelf` (aligné sur `getAoeTargets`) — le caster compte comme cible valide pour un heal de zone
+
+### Bug corrigé
+- Le caster n'était jamais compté par `findBestAoePosition` sur les positions candidates alors qu'il l'était déjà par `getAoeTargets` sur la position actuelle — la comparaison `hitCount` était donc biaisée et empêchait tout déplacement bénéfique pour un heal de zone
+
+### Limite confirmée (pas un bug)
+- Heal de zone avec `range > 0` : l'origine reste forcée sur le caster (`range: 0` est la seule valeur supportée pour les heals de zone, cf. `02_RULES.md`) — testé, écarté volontairement plutôt que traité comme un gap
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

@@ -36,13 +36,14 @@
 - `getAoeTargets` (GridSystem) ne coupe plus à 1 candidat pour `single` : toutes les cibles en range remontent, le tri par priorité puis la coupe à 1 se font dans `CombatSystem.applyTargetPriority`
 
 #### Ciblage intelligent — maximisation AOE
-- Pour les skills `targetType: 'aoe'` offensifs (`targetSide` absent ou `'enemy'`), le système recherche systématiquement, parmi toutes les cases atteignables, celle qui maximise le nombre d'ennemis touchés par la zone — pas seulement en fallback quand 0 cible n'est en portée
+- Pour les skills `targetType: 'aoe'` (offensifs ou heals de zone ally), le système recherche systématiquement, parmi toutes les cases atteignables, celle qui maximise le nombre de cibles adverses ou alliées touchées par la zone — pas seulement en fallback quand 0 cible n'est en portée
 - Le repositionnement n'a lieu que si une case atteignable touche **strictement plus** d'ennemis que la position actuelle (sinon le `moveBudget` est préservé pour la suite du tour)
 - `range: 0` (AOE centrée sur le caster, ex: Whirlwind, Shockwave) : chaque case candidate est elle-même testée comme origine de zone
 - `range > 0` (ex: Rain of Arrows, Nova) : pour chaque case candidate, toutes les cibles adverses atteignables depuis cette case servent d'origine potentielle, le meilleur score parmi elles est retenu
 - `GridSystem.findBestAoePosition(unit, skill, maxDistance?)` — nouvelle méthode, géométrie pure, réutilise `getAoeCells`
 - Égalité de score : la case la plus proche du point de départ est privilégiée (cohérent avec le principe déjà en place pour le ciblage single-target)
-- Hors scope : `targetType: 'all'` (pas de notion de position), heals de zone (`targetSide: 'ally'`) — la maximisation AOE pour un heal reste dans `07_TODO.md`
+- Pour un heal de zone (`targetSide: 'ally'`), le caster compte lui-même comme cible valide (`includeSelf`), cohérent avec `GridSystem.getAoeTargets`
+- Hors scope : `targetType: 'all'` (pas de notion de position) ; heal de zone avec `range > 0` non supporté — la règle `range: 0 = centré sur le caster` (voir `02_RULES.md`) s'applique strictement aux heals de zone, aucune origine alternative n'est recherchée
 
 #### Cooldowns en tours
 - `cooldownTurns: 0` → relançable chaque tour

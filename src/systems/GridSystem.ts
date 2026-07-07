@@ -275,7 +275,10 @@ moveTowardTargetIfReachable(
     const matchesSide = (u: GridUnit) =>
       side === 'ally' ? u.isHero === unit.isHero : u.isHero !== unit.isHero;
 
-    const foes = Array.from(this.units.values()).filter(u => matchesSide(u) && u.id !== unit.id);
+    const includeSelf = side === 'ally';
+    const foes = Array.from(this.units.values()).filter(u =>
+      matchesSide(u) && (includeSelf || u.id !== unit.id)
+    );
     const reachable = this.getReachableCells(unit, maxDistance);
     if (reachable.length === 0) return null;
 

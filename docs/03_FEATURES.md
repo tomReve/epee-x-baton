@@ -157,9 +157,17 @@
 - Résultat affiché : panel avec texte, couleur, sous-titre + bouton "Rejouer"
 - 3 résultats : `won`, `lost`, `timeout`
 
+#### Vitesse de combat
+- Facteur x1/x2/x4, réglable en cours de combat (pas seulement à l'initialisation)
+- `CombatSystem.setSpeed(multiplier)` divise tous les délais internes (`TURN_DELAY`, `PREVIEW_DELAY`, `HIT_STAGGER`, `TARGET_STAGGER`, `ATTACK_ANIM_DELAY`, `MOVE_ANIM_DELAY`) — `CombatSystem` reste indépendant de Phaser, aucune dépendance ajoutée
+- `CombatScene` applique le même facteur à ses propres durées (tweens de déplacement/flash/mort, `UnitAnimator.playWalk`, délai du floating text) — synchronisation manuelle du même multiplicateur des deux côtés, pas d'état partagé
+- Reset à x1 après un `scene.restart()` (resize ou rejouer), cohérent avec le reset des autres contrôles (pause)
+
 #### Contrôles
 - Bouton Pause (⏸/▶) — arrête/reprend `CombatSystem`
 - Bouton Restart (↺) — `scene.restart()` complet
+- Bouton Vitesse (x1/x2/x4) — cycle `CombatSystem.setSpeed()` + accélère uniformément les tweens Phaser (déplacement, flash, mort, floating text) du même facteur
+
 
 ### Données et progression
 

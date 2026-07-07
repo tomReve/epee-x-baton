@@ -2,9 +2,6 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Contrôle de vitesse de combat
-- [ ] Vitesse x2 / x4 pour accélérer les combats longs (standard du genre auto-battler)
-
 ### Tests unitaires (remonté de priorité basse)
 - [ ] Tests sur `GridSystem.getAoeTargets` — zone touchée par quasi toutes les features à venir (stun, shield, ciblage intelligent)
 - [ ] Tests sur le système de cooldown — historique de bug déjà rencontré (cooldown qui se relançait)

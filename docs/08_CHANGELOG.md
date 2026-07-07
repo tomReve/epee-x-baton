@@ -274,6 +274,17 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 ### Limite confirmée (pas un bug)
 - Heal de zone avec `range > 0` : l'origine reste forcée sur le caster (`range: 0` est la seule valeur supportée pour les heals de zone, cf. `02_RULES.md`) — testé, écarté volontairement plutôt que traité comme un gap
 
+---
+
+## Phase 13 — Contrôle de vitesse de combat
+
+### Facteur de vitesse x1/x2/x4
+- `CombatSystem` : `speedMultiplier` privé + `setSpeed(n)`/`getSpeed()`, méthode `delay(ms)` divise tout délai avant chaque `setTimeout`/`scheduleTurn` — aucune constante renommée, division au point d'appel uniquement
+- `CombatScene` : `speedMultiplier` local, divise les durées de tweens (`moveSprite`, `flashSprite`, `killSprite`), `UnitAnimator.playWalk()` et le délai du floating text (`skill_used`)
+- Nouveau bouton UI (cycle x1 → x2 → x4 → x1), appelle `combatSystem.setSpeed()` et met à jour son propre affichage
+- Choix : les deux vitesses (logique et Phaser) sont synchronisées manuellement par le même multiplicateur passé des deux côtés, pas de state partagé — cohérent avec la séparation stricte `CombatSystem`/`CombatScene` déjà en place
+- Reset à x1 au `scene.restart()` (resize ou rejouer), identique au comportement de pause
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

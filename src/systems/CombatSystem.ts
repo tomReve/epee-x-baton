@@ -51,6 +51,8 @@ export class CombatSystem {
 
   private running = false;
   private timeoutId?: ReturnType<typeof setTimeout>;
+  private speedMultiplier = 1;
+
 
   private readonly ATTACK_ANIM_DELAY = 700;
   private readonly MOVE_ANIM_DELAY   = 420;
@@ -71,10 +73,22 @@ export class CombatSystem {
     this.maxRounds = maxRounds;
   }
 
+  setSpeed(multiplier: number): void {
+    this.speedMultiplier = multiplier;
+  }
+
+  getSpeed(): number {
+    return this.speedMultiplier;
+  }
+
+  private delay(ms: number): number {
+    return ms / this.speedMultiplier;
+  }
+
   start(): void {
     this.running = true;
     this.onEvent({ type: 'round_start', round: 0 });
-    this.scheduleTurn(TURN_DELAY);
+    this.scheduleTurn(this.delay(TURN_DELAY));
   }
 
   stop(): void {
@@ -93,7 +107,7 @@ export class CombatSystem {
 
     if (!unit || !unit.isAlive()) {
       this.turns.next();
-      this.scheduleTurn(100);
+      this.scheduleTurn(this.delay(100));
       return;
     }
 
@@ -177,7 +191,7 @@ export class CombatSystem {
           if (!this.running) return;
           const liveTargets = this.resolveLiveTargets(allies, foes, gridUnit, skill);
           this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
-        }, this.MOVE_ANIM_DELAY);
+        }, this.delay(this.MOVE_ANIM_DELAY));
         return;
       }
     }
@@ -269,7 +283,7 @@ export class CombatSystem {
       }
 
       this.castSkillNow(unit, allies, foes, skills, index, usedThisTurn, skill, liveTargets, remainingBudget);
-    }, this.MOVE_ANIM_DELAY);
+    }, this.delay(this.MOVE_ANIM_DELAY));
   }
 
   private castSkillNow(
@@ -297,7 +311,7 @@ export class CombatSystem {
         if (!this.running) return;
         this.castSkillsSequentially(unit, allies, foes, skills, index + 1, usedThisTurn, moveBudget);
       }, animDelay);
-    }, PREVIEW_DELAY);
+    }, this.delay(PREVIEW_DELAY));
   }
 
   private useSkill(unit: CombatUnit, skill: Skill, targets: CombatUnit[]): number {
@@ -327,7 +341,7 @@ export class CombatSystem {
       }
     }
 
-    return totalDelay + this.ATTACK_ANIM_DELAY;
+    return totalDelay + this.delay(this.ATTACK_ANIM_DELAY);
   }
 
   private endTurn(unit: CombatUnit, usedSkillIds: Set<string> | null): void {
@@ -346,10 +360,10 @@ export class CombatSystem {
     let totalDelay = 0;
 
     targets.forEach((target, targetIndex) => {
-      const targetDelay = targetIndex * TARGET_STAGGER;
+      const targetDelay = targetIndex * this.delay(TARGET_STAGGER);
 
       for (let i = 0; i < hits; i++) {
-        const hitDelay = targetDelay + i * HIT_STAGGER;
+        const hitDelay = targetDelay + i * this.delay(HIT_STAGGER);
 
         setTimeout(() => {
           if (!this.running || !target.isAlive()) return;
@@ -387,7 +401,7 @@ export class CombatSystem {
       }
     }
 
-    this.scheduleTurn(TURN_DELAY);
+    this.scheduleTurn(this.delay(TURN_DELAY));
   }
 
   private handleDeath(unit: CombatUnit): void {

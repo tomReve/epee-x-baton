@@ -61,9 +61,11 @@ export class CombatScene extends Phaser.Scene {
     private phase: 'preparation' | 'combat' = 'preparation';
     private maxRounds = 15;
     private isPaused = false;
+    private speedMultiplier = 1;
 
     private pauseBtn!: Phaser.GameObjects.Container;
     private restartBtn!: Phaser.GameObjects.Container;
+    private speedBtn!: Phaser.GameObjects.Container;
 
     constructor() { super({ key: 'CombatScene' }); }
 
@@ -222,7 +224,7 @@ export class CombatScene extends Phaser.Scene {
         const container = this.unitSprites.get(id);
         if (!container) return;
         const { x, y } = this.cellToPixel(toCol, toRow);
-        this.tweens.add({ targets: container, x, y, duration: 350, ease: 'Sine.easeInOut' });
+        this.tweens.add({ targets: container, x, y, duration: 350 / this.speedMultiplier, ease: 'Sine.easeInOut' });
     }
 
     private flashSprite(id: string): void {
@@ -230,7 +232,7 @@ export class CombatScene extends Phaser.Scene {
         if (!container) return;
         this.tweens.killTweensOf(container);
         this.tweens.add({
-            targets: container, alpha: 0.2, duration: 80, yoyo: true, repeat: 2,
+            targets: container, alpha: 0.2, duration: 80 / this.speedMultiplier, yoyo: true, repeat: 2,
             onComplete: () => container.setAlpha(1),
         });
     }
@@ -239,7 +241,7 @@ export class CombatScene extends Phaser.Scene {
         const container = this.unitSprites.get(id);
         if (!container) return;
         this.tweens.add({
-            targets: container, alpha: 0, y: container.y - 20, duration: 400,
+            targets: container, alpha: 0, y: container.y - 20, duration: 400 / this.speedMultiplier,
             onComplete: () => container.destroy(),
         });
         this.unitSprites.delete(id);
@@ -333,7 +335,7 @@ export class CombatScene extends Phaser.Scene {
             }
 
             case 'unit_moved': {
-                this.unitAnimators.get(event.source!)?.playWalk(350);
+                this.unitAnimators.get(event.source!)?.playWalk(350 / this.speedMultiplier);
                 this.moveSprite(event.source!, event.toPos!.col, event.toPos!.row);
                 return;
             }
@@ -349,7 +351,7 @@ export class CombatScene extends Phaser.Scene {
                 const capturedX = pos?.x ?? 0;
                 const capturedY = pos?.y ?? 0;
 
-                this.time.delayedCall(hitIndex * 120, () => {
+                this.time.delayedCall((hitIndex * 120) / this.speedMultiplier, () => {
                     this.showFloatingTextAt(capturedX, capturedY, event.value!, isHeal, hitIndex * 14);
                 });
 
@@ -599,6 +601,10 @@ export class CombatScene extends Phaser.Scene {
             this.isPaused = false;
             this.scene.restart();
         });
+
+        this.speedBtn = this.createButton(W - 70, H - 260, 'x1', 0x445533, () => {
+            this.cycleSpeed();
+        });
     }
 
     private updatePauseLabel(): void {
@@ -658,6 +664,16 @@ export class CombatScene extends Phaser.Scene {
                 this.combatSystem.stop();
                 this.scene.restart();
             });
+    }
+
+    private cycleSpeed(): void {
+        const speeds = [1, 2, 4];
+        const currentIndex = speeds.indexOf(this.speedMultiplier);
+        this.speedMultiplier = speeds[(currentIndex + 1) % speeds.length];
+        this.combatSystem.setSpeed(this.speedMultiplier);
+
+        const text = this.speedBtn.getAt(1) as Phaser.GameObjects.Text;
+        text.setText(`x${this.speedMultiplier}`);
     }
 
     // ---------------------------------------------------------------------------

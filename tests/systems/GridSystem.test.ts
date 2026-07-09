@@ -1,23 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { GridSystem, GridUnit } from '../../src/systems/GridSystem';
-import { SkillData } from '../../src/entities/Skill';
-
-function makeUnit(id: string, col: number, row: number, isHero: boolean, moveRange = 4): GridUnit {
-  return { id, pos: { col, row }, isHero, moveRange };
-}
-
-function makeSkill(overrides: Partial<SkillData> = {}): SkillData {
-  return {
-    id: 'test_skill',
-    name: 'Test Skill',
-    cooldownTurns: 0,
-    range: 1,
-    targetType: 'single',
-    type: 'physical',
-    damage: 10,
-    ...overrides,
-  };
-}
+import { GridSystem } from '../../src/systems/GridSystem';
+import { makeUnit, makeSkill } from '../helpers/factories';
 
 describe('GridSystem — géométrie de base', () => {
   let grid: GridSystem;

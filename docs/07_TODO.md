@@ -5,7 +5,7 @@
 ### Tests unitaires — Vitest (setup fait, en cours)
 - [x] Setup Vitest (`vitest.config.ts`, dossier `tests/` centralisé à la racine, miroir de `src/`)
 - [x] `tests/systems/GridSystem.test.ts` — géométrie, déplacement, ciblage single/aoe/all, maximisation AOE
-- [ ] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
+- [x] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
 - [ ] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
 - [ ] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
 - [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak)

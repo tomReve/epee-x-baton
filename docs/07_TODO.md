@@ -2,11 +2,17 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Tests unitaires (remonté de priorité basse)
-- [ ] Tests sur `GridSystem.getAoeTargets` — zone touchée par quasi toutes les features à venir (stun, shield, ciblage intelligent)
-- [ ] Tests sur le système de cooldown — historique de bug déjà rencontré (cooldown qui se relançait)
-- [ ] Tests sur `TurnSystem` (ordre, gestion des morts)
-- [ ] À faire avant d'attaquer les effets de statut pour sécuriser une base de non-régression
+### Tests unitaires — Vitest (setup fait, en cours)
+- [x] Setup Vitest (`vitest.config.ts`, dossier `tests/` centralisé à la racine, miroir de `src/`)
+- [x] `tests/systems/GridSystem.test.ts` — géométrie, déplacement, ciblage single/aoe/all, maximisation AOE
+- [ ] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
+- [ ] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
+- [ ] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
+- [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak)
+- [ ] `tests/systems/CombatSystem.test.ts` — le plus complexe (chaîne de `setTimeout`) : décision à prendre sur l'approche (fake timers Vitest vs délais réels) avant d'attaquer
+- [ ] Tests à faire avant d'attaquer les effets de statut, pour sécuriser une base de non-régression
+- Convention : pas de tests unitaires sur `CombatScene.ts`/`BootScene.ts`/`main.ts` (Phaser, hors périmètre)
+- Tests non synchronisés dans le Project (contexte) — coller le fichier de test concerné en message quand modification nécessaire
 
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)

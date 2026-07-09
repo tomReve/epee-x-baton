@@ -18,11 +18,13 @@ npm run test:coverage  # avec rapport de couverture (text + html dans coverage/)
 ```
 tests/
 ├── helpers/
-│   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill)
+│   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit)
 ├── systems/
 │   ├── TurnSystem.test.ts
 │   └── GridSystem.test.ts
-├── entities/                # à venir
+├── entities/
+│   ├── Skill.test.ts
+│   └── CombatUnit.test.ts
 └── data/                    # à venir
 ```
 
@@ -36,6 +38,7 @@ Tout builder d'entité/objet de test réutilisé dans plusieurs fichiers va dans
 | `makeEnemy(id, speed, alive?)` | Enemy runtime minimal, sans skills |
 | `makeUnit(id, col, row, isHero, moveRange?)` | GridUnit pour tests géométrie |
 | `makeSkill(overrides?)` | SkillData avec valeurs par défaut, override via objet partiel |
+| `makeCombatUnit(overrides?)` | Hero runtime pour tests CombatUnit — override stats/skills. Note : `currentHp` s'initialise depuis `hp`, pas `maxHp` |
 
 Avant d'ajouter un nouveau helper : vérifier qu'un existant ne peut pas être réutilisé ou étendu via ses paramètres/overrides.
 

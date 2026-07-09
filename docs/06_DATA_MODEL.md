@@ -88,7 +88,7 @@ Porte tout l'état et les comportements runtime de combat, communs à `Hero` et 
 interface BaseUnitData {
   id:      string;
   name:    string;
-  hp:      number;
+  hp:      number; // HP courant à l'entrée en combat (peut être < maxHp, ex: dégâts d'exploration)
   maxHp:   number;
   attack:  number;
   defense: number;

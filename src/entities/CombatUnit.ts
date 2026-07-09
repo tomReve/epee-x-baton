@@ -17,7 +17,7 @@ export abstract class CombatUnit {
   currentHp: number;
 
   constructor(data: BaseUnitData) {
-    this.currentHp = data.maxHp;
+    this.currentHp = data.hp;
     this.skills = data.skills.map(s => new Skill(s));
   }
 

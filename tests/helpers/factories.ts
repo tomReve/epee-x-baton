@@ -1,4 +1,4 @@
-import { Hero } from '../../src/entities/Hero';
+import { Hero, HeroData } from '../../src/entities/Hero';
 import { Enemy } from '../../src/entities/Enemy';
 import { GridUnit } from '../../src/systems/GridSystem';
 import { SkillData } from '../../src/entities/Skill';
@@ -36,4 +36,13 @@ export function makeSkill(overrides: Partial<SkillData> = {}): SkillData {
     damage: 10,
     ...overrides,
   };
+}
+
+export function makeCombatUnit(overrides: Partial<HeroData> = {}) {
+  return new Hero({
+    id: 'unit_1', name: 'Test Unit',
+    hp: 100, maxHp: 100, attack: 10, defense: 5, speed: 1000,
+    skills: [],
+    ...overrides,
+  });
 }

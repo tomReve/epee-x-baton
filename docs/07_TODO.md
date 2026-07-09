@@ -6,9 +6,9 @@
 - [x] Setup Vitest (`vitest.config.ts`, dossier `tests/` centralisé à la racine, miroir de `src/`)
 - [x] `tests/systems/GridSystem.test.ts` — géométrie, déplacement, ciblage single/aoe/all, maximisation AOE
 - [x] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
-- [ ] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
-- [ ] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
-- [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak)
+- [x] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
+- [x] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
+- [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak) -> ne pas faire pour l'instant car pas utiliser
 - [ ] `tests/systems/CombatSystem.test.ts` — le plus complexe (chaîne de `setTimeout`) : décision à prendre sur l'approche (fake timers Vitest vs délais réels) avant d'attaquer
 - [ ] Tests à faire avant d'attaquer les effets de statut, pour sécuriser une base de non-régression
 - Convention : pas de tests unitaires sur `CombatScene.ts`/`BootScene.ts`/`main.ts` (Phaser, hors périmètre)
@@ -82,6 +82,11 @@
 - [ ] Structure `Equipment` à définir dans `game.types.ts`
 - [ ] `PlayerHeroState.equipment: EquipmentId[]` déjà prévu
 - [ ] Bonus de stats ou de skills
+
+### HP partiel en début de combat (exploration/nourriture)
+- [ ] `CombatUnit.currentHp` s'initialise désormais depuis `data.hp` (pas `maxHp`) — changement fait en prévision, sans effet actuel (`combat.factory.ts` envoie toujours `hp === maxHp`)
+- [ ] Reste à faire : `combat.factory.ts` doit recevoir et transmettre le HP courant réel du héros (persisté hors combat, pas de récup après combat/en donjon, géré via système de nourriture à définir)
+- [ ] Dépend de : système de progression/sauvegarde (`PlayerHeroState`) + mécanique nourriture non encore spécifiée
 
 ## Priorité basse
 

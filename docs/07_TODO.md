@@ -2,16 +2,6 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Tests unitaires — Vitest (setup fait, en cours)
-- [x] Setup Vitest (`vitest.config.ts`, dossier `tests/` centralisé à la racine, miroir de `src/`)
-- [x] `tests/systems/GridSystem.test.ts` — géométrie, déplacement, ciblage single/aoe/all, maximisation AOE
-- [x] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
-- [x] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
-- [x] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
-- [x] `tests/systems/CombatSystem.test.ts` — flux nominal, ciblage intelligent (single/AOE), cooldowns, mort en cours de multi-hit + re-ciblage, fins de combat (won/lost/timeout), stop()/setSpeed() (fake timers Vitest)
-- [ ] `tests/data/combat.factory.test.ts` — `buildHero`/`buildEnemy` (scaling stats par niveau/scaleFactor, mapping SkillDefinition → SkillData), `buildCombatSetup` (filtrage héros absents du niveau, ids uniques ennemis). Priorité haute : seul point de transformation data→runtime, historique de bug (mapping skill cassé, cf. changelog Phase 5)
-- [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak) -> ne pas faire pour l'instant car pas utiliser
-
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)
 - [ ] Burn (case appliquant des dégats sous certaines conditions)
@@ -63,6 +53,9 @@
 
 ### Skills unique de début de combat
 - [ ] Pouvoir créer des skills qui ne se déclenche qu'une fois au début du combat (effet de status la plupart du temps)
+
+### Tests unitaires
+- [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak) -> ne pas faire pour l'instant car pas utiliser
 
 ### Système de progression
 - [ ] XP gagnée après combat (selon `xpReward` des ennemis vaincus)

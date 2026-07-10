@@ -25,6 +25,9 @@
 
 ## Priorité moyenne
 
+### Effet de flicker quand dégats subit
+- [ ] Supprimer l'effet de flicker lors d'un soin et appliqué un effet plus cohérent (j'ai un asset , ça serait top de l'implémenter)
+
 ### Avenir de la preview AOE
 - [ ] Décision à terme : retirer la preview AOE du gameplay normal
 - [ ] Possible conservation en mode debug uniquement (toggle dev)

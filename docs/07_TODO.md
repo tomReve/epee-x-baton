@@ -8,11 +8,9 @@
 - [x] `tests/systems/TurnSystem.test.ts` — ordre de tri (speed, égalité héros/ennemis/alphabétique), `removeUnit`, rebouclage de round
 - [x] `tests/entities/CombatUnit.test.ts` — `takeDamage`, `heal`, `isAlive`, `getReadySkill`, `tickSkillCooldowns` (avec/sans exclusion `usedSkillIds`)
 - [x] `tests/entities/Skill.test.ts` — cooldown initial actif, `use()`, `tickCooldown()`, `isReady()`
+- [x] `tests/systems/CombatSystem.test.ts` — flux nominal, ciblage intelligent (single/AOE), cooldowns, mort en cours de multi-hit + re-ciblage, fins de combat (won/lost/timeout), stop()/setSpeed() (fake timers Vitest)
+- [ ] `tests/data/combat.factory.test.ts` — `buildHero`/`buildEnemy` (scaling stats par niveau/scaleFactor, mapping SkillDefinition → SkillData), `buildCombatSetup` (filtrage héros absents du niveau, ids uniques ennemis). Priorité haute : seul point de transformation data→runtime, historique de bug (mapping skill cassé, cf. changelog Phase 5)
 - [ ] `tests/data/power.test.ts` — `computeHeroPower`, `computeTeamPower`, `computeLevelPower`, `evaluateMatchup` (seuils strong/even/weak) -> ne pas faire pour l'instant car pas utiliser
-- [ ] `tests/systems/CombatSystem.test.ts` — le plus complexe (chaîne de `setTimeout`) : décision à prendre sur l'approche (fake timers Vitest vs délais réels) avant d'attaquer
-- [ ] Tests à faire avant d'attaquer les effets de statut, pour sécuriser une base de non-régression
-- Convention : pas de tests unitaires sur `CombatScene.ts`/`BootScene.ts`/`main.ts` (Phaser, hors périmètre)
-- Tests non synchronisés dans le Project (contexte) — coller le fichier de test concerné en message quand modification nécessaire
 
 ### Effets de statut / effets de sort spéciaux
 - [ ] Poison (dégâts par tour)

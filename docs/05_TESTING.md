@@ -17,15 +17,16 @@ npm run test:coverage  # avec rapport de couverture (text + html dans coverage/)
 ## Structure
 ```
 tests/
-├── helpers/
-│   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit)
-├── systems/
-│   ├── TurnSystem.test.ts
-│   └── GridSystem.test.ts
-├── entities/
-│   ├── Skill.test.ts
-│   └── CombatUnit.test.ts
-└── data/                    # à venir
+ ├── helpers/
+ │   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit, makeCombatSetup)
+ ├── systems/
+ │   ├── TurnSystem.test.ts
+ │   ├── GridSystem.test.ts
+ │   └── CombatSystem.test.ts
+ ├── entities/
+ │   ├── Skill.test.ts
+ │   └── CombatUnit.test.ts
+ └── data/                    # à venir
 ```
 
 ## Convention de helpers
@@ -38,7 +39,8 @@ Tout builder d'entité/objet de test réutilisé dans plusieurs fichiers va dans
 | `makeEnemy(id, speed, alive?)` | Enemy runtime minimal, sans skills |
 | `makeUnit(id, col, row, isHero, moveRange?)` | GridUnit pour tests géométrie |
 | `makeSkill(overrides?)` | SkillData avec valeurs par défaut, override via objet partiel |
-| `makeCombatUnit(overrides?)` | Hero runtime pour tests CombatUnit — override stats/skills. Note : `currentHp` s'initialise depuis `hp`, pas `maxHp` |
+| `makeCombatUnit(overrides?, isHero?)` | Retourne un `Hero` (défaut) ou un `Enemy` selon le second paramètre — même structure de données pour les deux camps |
+| `makeCombatSetup(heroes, enemies, options?)` | Monte un `CombatSystem` complet prêt à démarrer : `GridSystem` + `TurnSystem` + tableau `events[]` alimenté par le callback. `options.gridUnits` pour un placement explicite, sinon placement par défaut en colonnes opposées |
 
 Avant d'ajouter un nouveau helper : vérifier qu'un existant ne peut pas être réutilisé ou étendu via ses paramètres/overrides.
 
@@ -55,3 +57,11 @@ Config dans `vitest.config.ts` :
 - `exclude` : `scenes/**`, `main.ts`, `*.types.ts`, `*.data.ts`, `node_modules/**`
 
 Les fichiers `*.data.ts` (catalogues statiques : `skills.data.ts`, `heroes.data.ts`, `enemies.data.ts`) sont exclus du coverage — pas de logique, juste des données. `power.ts` et `combat.factory.ts` restent inclus (logique réelle, testés/à tester).
+
+## Tests de CombatSystem — fake timers
+
+`CombatSystem` enchaîne des `setTimeout` imbriqués avec délais dépendant de `speedMultiplier`. Approche retenue : **fake timers Vitest** (`vi.useFakeTimers()` / `vi.advanceTimersByTime()`), pour des tests rapides et déterministes plutôt que des délais réels (lents, flaky en CI).
+
+Tests en boîte noire via les events émis (callback `onEvent` capturé dans un tableau), pas d'inspection d'état interne de `CombatSystem`. Setups construits avec `moveRange: 0` sur les unités non concernées par le test, pour isoler le comportement testé sans interférence de repositionnement.
+
+Point d'attention : les constantes de timing (`TURN_DELAY`, `PREVIEW_DELAY`, `HIT_STAGGER`, `TARGET_STAGGER`, `ATTACK_ANIM_DELAY`, `MOVE_ANIM_DELAY`) doivent être avancées dans le bon ordre et en cumulant les bons délais — se référer aux constantes dans `CombatSystem.ts` plutôt que deviner.

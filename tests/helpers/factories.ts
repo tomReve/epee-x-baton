@@ -1,7 +1,9 @@
 import { Hero, HeroData } from '../../src/entities/Hero';
 import { Enemy } from '../../src/entities/Enemy';
-import { GridUnit } from '../../src/systems/GridSystem';
+import { GridSystem, GridUnit } from '../../src/systems/GridSystem';
 import { SkillData } from '../../src/entities/Skill';
+import { TurnSystem } from '../../src/systems/TurnSystem';
+import { CombatSystem, CombatEvent } from '../../src/systems/CombatSystem';
 
 export function makeHero(id: string, speed: number, alive = true): Hero {
   const hero = new Hero({
@@ -38,11 +40,40 @@ export function makeSkill(overrides: Partial<SkillData> = {}): SkillData {
   };
 }
 
-export function makeCombatUnit(overrides: Partial<HeroData> = {}) {
-  return new Hero({
+export function makeCombatUnit(
+  overrides: Partial<HeroData> = {},
+  isHero: boolean = true
+) {
+  const data = {
     id: 'unit_1', name: 'Test Unit',
     hp: 100, maxHp: 100, attack: 10, defense: 5, speed: 1000,
     skills: [],
     ...overrides,
-  });
+  };
+  return isHero ? new Hero(data) : new Enemy(data);
+}
+
+export function makeCombatSetup(
+  heroes: Hero[],
+  enemies: Enemy[],
+  options?: { gridUnits?: GridUnit[]; maxRounds?: number; cols?: number; rows?: number }
+) {
+  const grid = new GridSystem(options?.cols ?? 8, options?.rows ?? 6);
+
+  const gridUnits = options?.gridUnits ?? [
+    ...heroes.map((h, i) => ({ id: h.data.id, isHero: true, pos: { col: 0, row: i }, moveRange: 4 })),
+    ...enemies.map((e, i) => ({ id: e.data.id, isHero: false, pos: { col: 5, row: i }, moveRange: 4 })),
+  ];
+  for (const gu of gridUnits) grid.addUnit(gu);
+
+  const turns = new TurnSystem(heroes, enemies);
+
+  const events: CombatEvent[] = [];
+  const combat = new CombatSystem(
+    heroes, enemies, grid, turns,
+    (e) => events.push(e),
+    options?.maxRounds ?? 15
+  );
+
+  return { combat, grid, turns, events };
 }

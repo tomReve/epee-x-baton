@@ -17,16 +17,17 @@ npm run test:coverage  # avec rapport de couverture (text + html dans coverage/)
 ## Structure
 ```
 tests/
- ├── helpers/
- │   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit, makeCombatSetup)
- ├── systems/
- │   ├── TurnSystem.test.ts
- │   ├── GridSystem.test.ts
- │   └── CombatSystem.test.ts
- ├── entities/
- │   ├── Skill.test.ts
- │   └── CombatUnit.test.ts
- └── data/                    # à venir
+  ├── helpers/
+  │   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit, makeCombatSetup)
+  ├── systems/
+  │   ├── TurnSystem.test.ts
+  │   ├── GridSystem.test.ts
+  │   └── CombatSystem.test.ts
+  ├── entities/
+  │   ├── Skill.test.ts
+  │   └── CombatUnit.test.ts
+  └── data/
+       └── combat.factory.test.ts
 ```
 
 ## Convention de helpers
@@ -65,3 +66,9 @@ Les fichiers `*.data.ts` (catalogues statiques : `skills.data.ts`, `heroes.data.
 Tests en boîte noire via les events émis (callback `onEvent` capturé dans un tableau), pas d'inspection d'état interne de `CombatSystem`. Setups construits avec `moveRange: 0` sur les unités non concernées par le test, pour isoler le comportement testé sans interférence de repositionnement.
 
 Point d'attention : les constantes de timing (`TURN_DELAY`, `PREVIEW_DELAY`, `HIT_STAGGER`, `TARGET_STAGGER`, `ATTACK_ANIM_DELAY`, `MOVE_ANIM_DELAY`) doivent être avancées dans le bon ordre et en cumulant les bons délais — se référer aux constantes dans `CombatSystem.ts` plutôt que deviner.
+
+## Convention de mock des catalogues data
+
+`combat.factory.ts` importe directement `HERO_DEFINITIONS_BY_ID`, `ENEMY_DEFINITIONS_BY_ID`, `SKILLS_BY_ID` depuis les catalogues réels. Pour l'isoler du contenu du jeu (fragile aux ajouts/retraits de héros/skills), ces modules sont mockés via `vi.mock` + `vi.hoisted` (les valeurs référencées dans une factory `vi.mock` doivent être déclarées dans `vi.hoisted` à cause du hoisting de Vitest).
+
+Voir `tests/data/combat.factory.test.ts` comme référence pour ce pattern.

@@ -25,7 +25,7 @@ export const ENEMY_DEFINITIONS: EnemyDefinition[] = [
     type:      'normal',
     baseStats: { hp: 600,  attack: 12, defense: 2,  speed: 1400 },
     moveRange: MOVE_RANGE_NORMAL,
-    skills:    ['enemy_basic_attack', 'enemy_heavy_blow'],
+    skills:    ['enemy_basic_attack', 'enemy_stunning_blow'],
     spriteKey: 'goblin'
   },
   {

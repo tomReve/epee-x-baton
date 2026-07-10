@@ -27,6 +27,12 @@ export type SkillTargetPriority = 'first' | 'lowest_hp' | 'highest_attack';
 
 export type AoeShapeType = 'radius' | 'square' | 'cross' | 'line' | 'all';
 
+export type StatusEffectType = 'poison' | 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+
+export type StatusPolarity = 'positive' | 'negative';
+
+export type StatusTickTiming = 'turn_start' | 'turn_end';
+
 // ---------------------------------------------------------------------------
 // Statistiques de base
 // ---------------------------------------------------------------------------
@@ -70,6 +76,7 @@ export interface SkillDefinition {
   targetPriority?: SkillTargetPriority;
   aoe?:          AoeShape;
   type:          SkillEffectType;
+  effects?:      SkillEffectApplication[];   // ← nouveau
 }
 
 // ---------------------------------------------------------------------------
@@ -162,10 +169,6 @@ export interface PowerRating {
   };
 }
 
-export type StatusEffectType = 'poison' | 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
-export type StatusPolarity = 'positive' | 'negative';
-export type StatusTickTiming = 'turn_end';
-
 export interface StatusEffectDefinition {
   id:            string;
   name:          string;
@@ -174,4 +177,10 @@ export interface StatusEffectDefinition {
   stackable:     boolean;
   durationTurns: number;
   tickTiming:    StatusTickTiming;
+}
+
+export interface SkillEffectApplication {
+  statusId:       string;
+  durationTurns?: number;  // override de StatusEffectDefinition.durationTurns
+  chance?:        number;  // 1-100, anticipé, non lu pour l'instant (toujours appliqué)
 }

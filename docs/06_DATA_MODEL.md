@@ -42,7 +42,14 @@ interface SkillDefinition {
   targetSide?:   'enemy' | 'ally';        // défaut: 'enemy' si absent
   targetPriority?: 'first' | 'lowest_hp' | 'highest_attack';  // défaut: 'first' si absent
   aoe?:          AoeShape;       // uniquement si targetType === 'aoe'
-  type:          SkillEffectType;
+  type:          SkillEffectType
+  effects?:      SkillEffectApplication[];  // effets de statut appliqués aux cibles à l'impact
+}
+
+interface SkillEffectApplication {
+  statusId:       string;    // référence STATUS_EFFECTS_BY_ID
+  durationTurns?: number;    // override de StatusEffectDefinition.durationTurns
+  chance?:        number;    // 1-100, anticipé, non lu actuellement (toujours appliqué)
 }
 ```
 
@@ -66,12 +73,12 @@ class Skill {
 
 ## Effets de statut
 
-### `StatusEffectDefinition` (données statiques, `status_effects.data.ts`)
+### `StatusEffectDefinition` (données statiques, `statusEffects.data.ts`)
 
 ```typescript
 type StatusEffectType   = 'poison' | 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
 type StatusPolarity     = 'positive' | 'negative';
-type StatusTickTiming   = 'turn_end';   // seule valeur supportée pour l'instant
+type StatusTickTiming   = 'turn_start' | 'turn_end';
 
 interface StatusEffectDefinition {
   id:            string;
@@ -84,16 +91,16 @@ interface StatusEffectDefinition {
 }
 ```
 
-Catalogue statique (`STATUS_EFFECTS` / `STATUS_EFFECTS_BY_ID`), même pattern que `skills.data.ts`. **Actuellement vide** — chaque effet concret (stun, poison, shield, buff/debuff...) est ajouté au catalogue lors de sa propre feature dédiée, une discussion à la fois.
+Catalogue statique (`STATUS_EFFECTS` / `STATUS_EFFECTS_BY_ID`), même pattern que `skills.data.ts`. Contient actuellement `stun` (`durationTurns: 1`, `tickTiming: 'turn_end'`, `stackable: false`). Chaque nouvel effet concret (poison, shield, buff/debuff...) est ajouté au catalogue lors de sa propre feature dédiée.
 
-`tickTiming` anticipe des déclencheurs futurs autres que la fin de tour (ex: `burn` déclenché par un déplacement sur une case) — non implémenté, seule la valeur `'turn_end'` existe à ce jour.
+`tickTiming` détermine **quand** un effet est tické (`'turn_start'` pour anticiper poison ; `'turn_end'` utilisé par stun) — indépendant du `type` de l'effet. Le tick ne fait qu'avancer/expirer la durée ; le **comportement** associé (bloquer le tour, infliger des dégâts...) est dispatché dans `CombatSystem` selon `type`, jamais dans `StatusEffect`/`CombatUnit`.
 
 ### `StatusEffect` (entité runtime, `entities/StatusEffect.ts`)
 
 ```typescript
 class StatusEffect {
   data: StatusEffectDefinition;
-  private turnsRemaining: number;  // initialisé à durationTurns
+  private turnsRemaining: number;  // initialisé à durationTurns (ou override applyStatusEffect)
 
   isExpired(): boolean            // turnsRemaining <= 0
   tick(): void                    // turnsRemaining-- si > 0
@@ -101,26 +108,26 @@ class StatusEffect {
 }
 ```
 
-Symétrique à `Skill`/`SkillData` (même relation données statiques ↔ entité runtime).
+Symétrique à `Skill`/`SkillData`.
 
 ### Intégration sur `CombatUnit`
 
 ```typescript
 abstract class CombatUnit {
-  // ... (inchangé)
   statusEffects: StatusEffect[];
 
-  applyStatusEffect(def: StatusEffectDefinition): void
-  // non-stackable + déjà présent → remplace l'instance existante (reset durée)
+  applyStatusEffect(def: StatusEffectDefinition, durationOverride?: number): void
+  // non-stackable + déjà présent → remplace l'instance existante (durée = durationOverride ?? def.durationTurns)
   // stackable → nouvelle instance ajoutée, les deux coexistent
 
   hasStatusEffect(id: string): boolean
-  tickStatusEffects(): void
-  // tick toutes les instances actives, retire celles expirées
+
+  tickStatusEffects(timing: StatusTickTiming): void
+  // tick uniquement les instances dont tickTiming === timing, retire celles expirées
 }
 ```
 
-**Statut** : infrastructure posée, **non branchée** dans `CombatSystem` — `tickStatusEffects()` n'est appelé nulle part encore. Aucun effet concret n'existe dans le catalogue. Le premier effet à implémenter (probablement stun) branchera l'appel dans `endTurn()`, au même point que `tickSkillCooldowns()`.
+**Statut** : infrastructure branchée pour le **stun** uniquement. `CombatSystem.processTurn()` vérifie `hasStatusEffect('stun')` avant d'exécuter le tour d'une unité ; `endTurn()` appelle `tickStatusEffects('turn_end')` au même point que `tickSkillCooldowns()`. Poison (`'turn_start'`), buff/debuff, shield restent à implémenter — chacun ajoutera son propre point de dispatch dans `CombatSystem`.
 
 ### Formes AOE
 
@@ -317,6 +324,7 @@ interface CombatEvent {
     | 'cooldowns_updated'    // cooldowns d'un héros ont changé
     | 'skill_preview'        // affiche la preview AOE
     | 'skill_preview_clear'; // efface la preview AOE
+    | 'unit_stunned';
 
   source?:    string;           // id de l'unité qui agit
   target?:    string;           // id de la cible principale
@@ -374,4 +382,9 @@ EnemyDefinition                  ──► Enemy extends CombatUnit
 
 LevelDefinition.enemySpawns[] ──► EnemyDefinition (via enemyId)
 LevelDefinition.heroSpawns[]  ──► PlayerHeroState (via heroId)
+
+SkillDefinition.effects[] ──► StatusEffectDefinition (via statusId)
+      │
+      ▼ (appliqué dans CombatSystem.applySkillEffects)
+   CombatUnit.statusEffects[] (StatusEffect runtime)
 ```

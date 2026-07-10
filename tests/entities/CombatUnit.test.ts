@@ -114,13 +114,28 @@ describe('CombatUnit', () => {
       const unit = makeCombatUnit();
       expect(unit.hasStatusEffect('poison')).toBe(false);
     });
+
+    it('applies durationOverride instead of the catalog default', () => {
+        const unit = makeCombatUnit();
+        const stun = makeStatusEffectDef({ id: 'stun', durationTurns: 1, tickTiming: 'turn_end' });
+
+        unit.applyStatusEffect(stun, 3);
+        unit.tickStatusEffects('turn_end');
+        unit.tickStatusEffects('turn_end');
+
+        // durationTurns override = 3, seulement 2 ticks effectués → toujours actif
+        expect(unit.hasStatusEffect('stun')).toBe(true);
+
+        unit.tickStatusEffects('turn_end');
+        expect(unit.hasStatusEffect('stun')).toBe(false);
+    });
   
     it('reapplying a non-stackable effect replaces the existing instance (resets duration)', () => {
       const unit = makeCombatUnit();
       const def = makeStatusEffectDef({ id: 'stun', stackable: false, durationTurns: 2 });
   
       unit.applyStatusEffect(def);
-      unit.tickStatusEffects(); // turnsRemaining: 1
+      unit.tickStatusEffects(def.tickTiming); // turnsRemaining: 1
       unit.applyStatusEffect(def); // reset
   
       expect(unit.statusEffects).toHaveLength(1);
@@ -134,24 +149,29 @@ describe('CombatUnit', () => {
       unit.applyStatusEffect(def);
       unit.applyStatusEffect(def);
   
-      expect(unit.statusEffects).toHaveLength(2);
+      expect(unit.statusEffects.filter(e => e.data.id === 'poison')).toHaveLength(2);
     });
   
-    it('tickStatusEffects decrements all active effects', () => {
+    it('tickStatusEffects only ticks effects matching the given timing', () => {
       const unit = makeCombatUnit();
-      unit.applyStatusEffect(makeStatusEffectDef({ id: 'a', durationTurns: 3 }));
-      unit.applyStatusEffect(makeStatusEffectDef({ id: 'b', durationTurns: 3, stackable: true }));
+      const stun = makeStatusEffectDef({ id: 'stun', durationTurns: 1, tickTiming: 'turn_end' });
+      const poison = makeStatusEffectDef({ id: 'poison', durationTurns: 1, tickTiming: 'turn_start' });
   
-      unit.tickStatusEffects();
+      unit.applyStatusEffect(stun);
+      unit.applyStatusEffect(poison);
   
-      expect(unit.statusEffects.every(e => e.getTurnsRemaining() === 2)).toBe(true);
+      unit.tickStatusEffects('turn_end');
+  
+      expect(unit.hasStatusEffect('stun')).toBe(false);   // expiré
+      expect(unit.hasStatusEffect('poison')).toBe(true);  // intact, mauvais timing
     });
   
     it('tickStatusEffects removes expired effects', () => {
       const unit = makeCombatUnit();
-      unit.applyStatusEffect(makeStatusEffectDef({ id: 'short', durationTurns: 1 }));
+      const def = makeStatusEffectDef({ id: 'short', durationTurns: 1 });
+      unit.applyStatusEffect(def);
   
-      unit.tickStatusEffects();
+      unit.tickStatusEffects(def.tickTiming); // expire
   
       expect(unit.hasStatusEffect('short')).toBe(false);
       expect(unit.statusEffects).toHaveLength(0);
@@ -159,10 +179,11 @@ describe('CombatUnit', () => {
   
     it('hasStatusEffect becomes false after expiration + tick', () => {
       const unit = makeCombatUnit();
-      unit.applyStatusEffect(makeStatusEffectDef({ id: 'stun', durationTurns: 1 }));
+      const def = makeStatusEffectDef({ id: 'stun', durationTurns: 1 });
+      unit.applyStatusEffect(def);
   
       expect(unit.hasStatusEffect('stun')).toBe(true);
-      unit.tickStatusEffects();
+      unit.tickStatusEffects(def.tickTiming);
       expect(unit.hasStatusEffect('stun')).toBe(false);
     });
   });

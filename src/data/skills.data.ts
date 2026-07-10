@@ -313,6 +313,18 @@ export const SKILLS: SkillDefinition[] = [
     aoe:           { type: 'cross', value: 1 },
     type:          'physical',
   },
+  {
+    id:            'enemy_stunning_blow',
+    name:          'Stunning Blow',
+    description:   'Frappe étourdissante.',
+    availableFor:  [],
+    damage:        15,
+    cooldownTurns: 1,
+    range:         1,
+    targetType:    'single',
+    type:          'physical',
+    effects:       [{ statusId: 'stun' }],
+  },
 
   // -------------------------------------------------------------------------
   // Skills boss

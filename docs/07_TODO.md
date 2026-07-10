@@ -2,17 +2,18 @@
 
 ## Priorité haute (prochaines sessions)
 
-### Effets de statut / effets de sort spéciaux
+### Effets de statut (implémenter au moins un sort avec l'effet de statut développé)
 - [x] Infrastructure de base posée : `StatusEffectDefinition`, `StatusEffect` (runtime), `CombatUnit.statusEffects` — catalogue vide, non branché dans `CombatSystem`
-- [ ] Stun (passe le tour, empêche l'action) Décisions déjà actées : cooldowns tickent normalement pendant le tour raté ; le tick de durée du stun se fait en fin de tour (même timing que `tickSkillCooldowns`), pour que `durationTurns: N` bloque exactement N tours
+- [x] Stun (passe le tour, empêche l'action) Décisions déjà actées : cooldowns tickent normalement pendant le tour raté ; le tick de durée du stun se fait en fin de tour (même timing que `tickSkillCooldowns`), pour que `durationTurns: N` bloque exactement N tours
 - [ ] Poison (dégâts par tour) — `tickTiming` autre que `'turn_end'` à définir (ex: `'turn_start'`), pas encore supporté par l'infra actuelle
 - [ ] Sort déclenchant un effet (par exemple, un sort des déclenche le poison)
 - [ ] Burn (case appliquant des dégâts) — `tickTiming` autre que `'turn_end'` à définir (ex: `'on_move'`), pas encore supporté par l'infra actuelle
 - [ ] Buff/Debuff stats (attaque/def/crit/speed/mouvement)
 - [ ] Taunt / Fear — à coordonner avec le ciblage intelligent existant
 - [ ] Contre (renvoi de dégâts)
-- [ ] **A rediscuter** : pas de champ générique `effects?: StatusEffect[]` sur `SkillData` pour l'instant — chaque skill qui applique un effet aura un champ dédié explicite, à définir au cas par cas quand le premier effet (stun) sera implémenté
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
+- [ ] **Chance d'application** : `SkillEffectApplication.chance` existe dans le type mais n'est pas encore lu — tout effet listé dans `effects[]` est actuellement appliqué à 100%
+- [ ] **Feedback visuel des effets de statut** : icône ou indicateur à côté du sprite de l'unité affectée (`CombatScene` ne traite pas encore l'event `unit_stunned`, ni aucun affichage de statut actif) — à cadrer avec le reste de l'UI (timeline, HP bars)
 
 ### Propriétés / effets de sort ponctuelles résolus à l'impact d'un skill :
 - [ ] Cadrer le fonctionnement pour centraliser un maximum ce genre de propriétés sans divergé de l'architecture actuelle

@@ -63,8 +63,18 @@
 ### Skills
 - Chaque héros dispose de **4 skills équipés** parmi les skills disponibles pour sa classe
 - Les skills sont définis dans `skills.data.ts` avec `availableFor: HeroClass[]`
-- Un skill sans `damage` ni `heal` n'est pas valide (à confirmer si des buffs/debuffs sont ajoutés)
+- Un skill doit avoir au moins un de : `damage`, `heal`, `effects`
 - `range: 0` = centré sur le caster (AOE autour de soi ou `targetType: 'all'` sans condition de range)
+
+### Effets de statut
+- Un skill applique un effet de statut via le champ générique `effects?: SkillEffectApplication[]` sur `SkillDefinition`/`SkillData` — pas de champ dédié par effet (`stun?`, `poison?`, etc.)
+- `SkillEffectApplication.statusId` référence `STATUS_EFFECTS_BY_ID` — chaque définition d'effet (durée par défaut, polarité, stackable, tickTiming) vit dans `statusEffects.data.ts`
+- `SkillEffectApplication.durationTurns` override optionnel de la durée par défaut du catalogue — permet plusieurs skills référençant le même statut à des degrés différents
+- `SkillEffectApplication.chance` anticipé dans le type mais **non lu** actuellement — tout effet listé est appliqué à 100%
+- Un skill peut n'avoir **que** des `effects` (aucun `damage`/`heal`) — cas des skills de statut pur (debuff/hex)
+- L'application d'un effet suit les `targets` déjà résolus par le flux existant (comme `heal`) — pas de logique de ciblage séparée
+- Le **comportement** d'un statut (bloquer le tour, infliger des dégâts, etc.) est dispatché par `type` dans `CombatSystem`, jamais dans `CombatUnit`/`StatusEffect` (qui restent limités à la durée/expiration)
+- `StatusTickTiming` détermine **quand** un effet tick (`'turn_start'` | `'turn_end'`), indépendamment de son `type` — le tick de durée d'un effet suit son propre timing, pas une règle unique pour tous les statuts
 
 ### Ennemis
 - Ennemis normaux : **2 skills** (`[basic_attack, heavy_blow]`)

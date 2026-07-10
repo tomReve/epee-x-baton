@@ -66,6 +66,21 @@
 - Preview AOE, multi-hit et re-ciblage après kill s'appliquent identiquement aux deux camps
 - `applySkillImpact` et `handleDeath` sont génériques sur `CombatUnit`, aucune méthode dupliquée par camp
 
+#### Effets de statut — Stun (premier effet implémenté)
+- Infrastructure généralisée : champ `effects?: SkillEffectApplication[]` sur `SkillDefinition`/`SkillData`, référence `STATUS_EFFECTS_BY_ID`
+- `CombatUnit.applyStatusEffect(def, durationOverride?)` — non-stackable + déjà présent → remplace (reset durée) ; stackable → nouvelle instance ajoutée
+- `CombatUnit.tickStatusEffects(timing)` — tick uniquement les effets dont le `tickTiming` correspond, retire les expirés
+- `CombatSystem` dispatch le comportement du stun : dans `processTurn()`, si l'unité courante a le statut `stun` actif, son tour est intégralement sauté (aucun skill, aucun mouvement), un event `unit_stunned` est émis, puis `endTurn()` est appelé directement — un seul chemin vers `finishTurn()`, cohérent avec `02_RULES.md`
+- Les cooldowns tickent normalement pendant un tour stun (`tickSkillCooldowns` appelé même sans action)
+- Le tick de durée du stun (`tickTiming: 'turn_end'`) se fait au même point que `tickSkillCooldowns`, dans `endTurn()` — donc `durationTurns: 1` bloque exactement 1 tour
+- `useSkill()` applique les effets via `applySkillEffects()`, appelée indépendamment de la présence de `damage`/`heal` — un skill de statut pur (sans dégâts ni soin) applique son effet sans émettre de `skill_used`
+- Catalogue : `stun` défini dans `statusEffects.data.ts` (`durationTurns: 1`, `tickTiming: 'turn_end'`, `stackable: false`)
+- Skill de démo : `enemy_stunning_blow` (dégâts + stun), équipé sur `goblin`
+
+**Statut** : seul le stun est concrètement branché. Poison, buff/debuff, shield, etc. restent à faire (voir `07_TODO.md`) — chacun nécessitera son propre dispatch dans `CombatSystem` selon son `type` et son `tickTiming`.
+
+**Hors scope actuel** : feedback visuel (icône/indicateur de statut sur le sprite) — l'event `unit_stunned` existe côté logique mais `CombatScene` ne le traite pas encore.
+
 ### Système de grille
 
 #### Grille partagée

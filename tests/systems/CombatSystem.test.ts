@@ -379,4 +379,190 @@ describe('CombatSystem', () => {
     vi.advanceTimersByTime(300); // 600 / 2
     expect(events.some(e => e.type === 'turn_start' && e.source === 'hero_1')).toBe(true);
   });
+  
+  // -------------------------------------------------------------------------
+  // 13. Stun : passe le tour, émet unit_stunned, aucun skill/mouvement
+  // -------------------------------------------------------------------------
+  it('unité stun : passe son tour, émet unit_stunned, aucun skill_used ni unit_moved', () => {
+    const skill = new Skill(makeSkill({
+      id: 'attack', damage: 10, range: 5, cooldownTurns: 0, targetType: 'single',
+    }));
+
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 2000 });
+    hero.skills = [skill];
+    hero.applyStatusEffect({
+      id: 'stun', name: 'Stun', type: 'stun', polarity: 'negative',
+      stackable: false, durationTurns: 1, tickTiming: 'turn_end',
+    });
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 1000 }, false);
+
+    const { combat, events } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600); // turn_start hero_1
+
+    expect(events.some(e => e.type === 'unit_stunned' && e.source === 'hero_1')).toBe(true);
+    expect(events.some(e => e.type === 'skill_used' && e.source === 'hero_1')).toBe(false);
+    expect(events.some(e => e.type === 'unit_moved' && e.source === 'hero_1')).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // 14. Stun : les cooldowns tickent normalement pendant le tour raté
+  // -------------------------------------------------------------------------
+  it('unité stun : les cooldowns non utilisés tickent quand même en fin de tour', () => {
+    const untouchedSkill = new Skill(makeSkill({
+      id: 'untouched_skill', damage: 5, range: 1, cooldownTurns: 3, targetType: 'single',
+    }));
+    // cooldown initial actif à 3, jamais castée (unité stun) -> doit ticker à 2
+
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 2000 });
+    hero.skills = [untouchedSkill];
+    hero.applyStatusEffect({
+      id: 'stun', name: 'Stun', type: 'stun', polarity: 'negative',
+      stackable: false, durationTurns: 1, tickTiming: 'turn_end',
+    });
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 1000 }, false);
+
+    const { combat } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600);
+
+    expect(untouchedSkill.getTurnsRemaining()).toBe(2);
+  });
+
+  // -------------------------------------------------------------------------
+  // 15. Stun : expire après le tour raté, l'unité rejoue normalement ensuite
+  // -------------------------------------------------------------------------
+  it('le stun expire après le tour raté, l\'unité agit normalement au tour suivant', () => {
+    const skill = new Skill(makeSkill({
+      id: 'attack', damage: 10, range: 5, cooldownTurns: 0, targetType: 'single',
+    }));
+
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 2000 });
+    hero.skills = [skill];
+    hero.applyStatusEffect({
+      id: 'stun', name: 'Stun', type: 'stun', polarity: 'negative',
+      stackable: false, durationTurns: 1, tickTiming: 'turn_end',
+    });
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 1000, hp: 1000, maxHp: 1000 }, false);
+
+    const { combat, events } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600); // hero_1 : tour raté, stun consommé
+
+    expect(hero.hasStatusEffect('stun')).toBe(false);
+
+    vi.advanceTimersByTime(600); // enemy_1 joue (aucun skill équipé -> endTurn direct)
+    vi.advanceTimersByTime(600); // hero_1 rejoue, plus stun
+
+    vi.advanceTimersByTime(400 + 120); // PREVIEW_DELAY + hit
+
+    expect(events.some(e => e.type === 'skill_used' && e.source === 'hero_1' && e.target === 'enemy_1')).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // 16. Un skill applique un effet de statut sur sa cible à l'impact
+  // -------------------------------------------------------------------------
+  it('un skill avec effects applique le statut correspondant sur la cible', () => {
+    const stunningSkill = new Skill(makeSkill({
+      id: 'stunning_blow', damage: 10, range: 1, cooldownTurns: 0, targetType: 'single',
+      effects: [{ statusId: 'stun' }],
+    }));
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 2000 }, false);
+    enemy.skills = [stunningSkill];
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 1000, hp: 1000, maxHp: 1000 });
+
+    const { combat } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600); // turn_start enemy_1
+    vi.advanceTimersByTime(400); // PREVIEW_DELAY
+    vi.advanceTimersByTime(120); // hit unique
+
+    expect(hero.hasStatusEffect('stun')).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // 17. Un skill purement statut (sans damage/heal) applique quand même l'effet
+  // -------------------------------------------------------------------------
+  it('un skill sans damage ni heal, avec seulement effects, applique le statut', () => {
+    const statusOnlySkill = new Skill(makeSkill({
+      id: 'hex', range: 1, cooldownTurns: 0, targetType: 'single',
+      effects: [{ statusId: 'stun' }],
+    }));
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 2000 }, false);
+    enemy.skills = [statusOnlySkill];
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 1000, hp: 1000, maxHp: 1000 });
+
+    const { combat, events } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600);
+    vi.advanceTimersByTime(400); // PREVIEW_DELAY, pas d'ATTACK_ANIM_DELAY à attendre pour les dégâts
+
+    expect(hero.hasStatusEffect('stun')).toBe(true);
+    expect(events.some(e => e.type === 'skill_used' && e.target === 'hero_1')).toBe(false); // pas de dégâts/heal émis
+  });
+
+  // -------------------------------------------------------------------------
+  // 18. durationTurns override sur l'application d'effet
+  // -------------------------------------------------------------------------
+  it('effects[].durationTurns override la durée par défaut du catalogue', () => {
+    const longStunSkill = new Skill(makeSkill({
+      id: 'long_stun', damage: 5, range: 1, cooldownTurns: 0, targetType: 'single',
+      effects: [{ statusId: 'stun', durationTurns: 2 }],
+    }));
+
+    const enemy = makeCombatUnit({ id: 'enemy_1', speed: 2000 }, false);
+    enemy.skills = [longStunSkill];
+    const hero = makeCombatUnit({ id: 'hero_1', speed: 1000, hp: 1000, maxHp: 1000 });
+
+    const { combat } = makeCombatSetup([hero], [enemy], {
+      gridUnits: [
+        { id: 'hero_1', isHero: true, pos: { col: 0, row: 0 }, moveRange: 0 },
+        { id: 'enemy_1', isHero: false, pos: { col: 1, row: 0 }, moveRange: 0 },
+      ],
+    });
+
+    combat.start();
+    vi.advanceTimersByTime(600 + 400 + 120); // stun appliqué avec durationTurns: 2
+
+    hero.tickStatusEffects('turn_end'); // simulate 1 tick de fin de tour
+    expect(hero.hasStatusEffect('stun')).toBe(true); // encore actif (2 -> 1)
+
+    hero.tickStatusEffects('turn_end');
+    expect(hero.hasStatusEffect('stun')).toBe(false); // expiré (1 -> 0)
+  });
 });

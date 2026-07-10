@@ -1,4 +1,4 @@
-import { StatusEffectDefinition } from '../types/game.types';
+import { StatusEffectDefinition, StatusTickTiming } from '../types/game.types';
 import { Skill, SkillData } from './Skill';
 import { StatusEffect } from './StatusEffect';
 
@@ -49,19 +49,24 @@ export abstract class CombatUnit {
     }
   }
 
-  applyStatusEffect(def: StatusEffectDefinition): void {
+  applyStatusEffect(def: StatusEffectDefinition, durationOverride?: number): void {
     if (!def.stackable && this.hasStatusEffect(def.id)) {
       this.statusEffects = this.statusEffects.filter(e => e.data.id !== def.id);
     }
-    this.statusEffects.push(new StatusEffect(def));
+    const effectDef = durationOverride !== undefined
+      ? { ...def, durationTurns: durationOverride }
+      : def;
+    this.statusEffects.push(new StatusEffect(effectDef));
   }
-
+  
   hasStatusEffect(id: string): boolean {
     return this.statusEffects.some(e => e.data.id === id);
   }
-
-  tickStatusEffects(): void {
-    for (const effect of this.statusEffects) effect.tick();
+  
+  tickStatusEffects(timing: StatusTickTiming): void {
+    for (const effect of this.statusEffects) {
+      if (effect.data.tickTiming === timing) effect.tick();
+    }
     this.statusEffects = this.statusEffects.filter(e => !e.isExpired());
   }
 }

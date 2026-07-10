@@ -2,6 +2,7 @@ import { CombatUnit } from '../entities/CombatUnit';
 import { Skill, SkillData } from '../entities/Skill';
 import { GridPosition, GridSystem, GridUnit } from './GridSystem';
 import { TurnSystem } from './TurnSystem';
+import { STATUS_EFFECTS_BY_ID } from '../data/statusEffects.data';
 
 export type CombatMode = 'eliminate' | 'damage_race';
 
@@ -17,7 +18,8 @@ export interface CombatEvent {
     | 'combat_timeout'
     | 'cooldowns_updated'
     | 'skill_preview'
-    | 'skill_preview_clear';
+    | 'skill_preview_clear'
+    | 'unit_stunned';
   source?:    string;
   target?:    string;
   targets?:   string[];
@@ -116,6 +118,12 @@ export class CombatSystem {
     const allies = unit.isHero ? this.heroes : this.enemies;
     const foes   = unit.isHero ? this.enemies : this.heroes;
     const self   = allies.find(u => u.data.id === unit.id)!;
+
+    if (self.hasStatusEffect('stun')) {
+      this.onEvent({ type: 'unit_stunned', source: self.data.id });
+      this.endTurn(self, null);
+      return;
+    }
 
     this.processUnitTurn(self, allies, foes);
   }
@@ -341,11 +349,29 @@ export class CombatSystem {
       }
     }
 
+    if (skill.data.effects) {
+      const effectTargets = targets.length > 0 ? targets : [unit];
+      this.applySkillEffects(skill, effectTargets);
+    }
+
     return totalDelay + this.delay(this.ATTACK_ANIM_DELAY);
+  }
+
+  private applySkillEffects(skill: Skill, targets: CombatUnit[]): void {
+    for (const application of skill.data.effects ?? []) {
+      const def = STATUS_EFFECTS_BY_ID[application.statusId];
+      if (!def) continue;
+
+      for (const target of targets) {
+        if (!target.isAlive()) continue;
+        target.applyStatusEffect(def, application.durationTurns);
+      }
+    }
   }
 
   private endTurn(unit: CombatUnit, usedSkillIds: Set<string> | null): void {
     unit.tickSkillCooldowns(usedSkillIds);
+    unit.tickStatusEffects('turn_end');
     this.onEvent({ type: 'cooldowns_updated', source: unit.data.id });
     this.finishTurn();
   }

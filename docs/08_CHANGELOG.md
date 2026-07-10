@@ -304,6 +304,34 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 ### Statut
 - Infrastructure posée, **non branchée** dans `CombatSystem` — `tickStatusEffects()` n'est appelé nulle part. Catalogue vide. Chaque effet concret sera une feature dédiée séparée.
 
+## Phase 15 — Premier effet de statut : Stun
+
+### Champ générique `effects` sur SkillDefinition
+- Décision : `effects?: SkillEffectApplication[]` générique plutôt qu'un champ dédié par effet (`stun?`, `poison?`...) — renverse l'intention notée en Phase 14/TODO. Raison : lisibilité de `SkillDefinition` à mesure que les effets se multiplient, et possibilité de plusieurs skills référençant le même statut à des degrés différents (`durationTurns` override)
+- `SkillEffectApplication { statusId, durationTurns?, chance? }` — `chance` anticipé (probabilité d'application, cf. `07_TODO.md`) mais non lu actuellement
+
+### CombatUnit
+- `applyStatusEffect(def, durationOverride?)` — accepte désormais un override de durée
+- `tickStatusEffects(timing)` — signature changée : tick filtré par `StatusTickTiming` (`'turn_start' | 'turn_end'`) au lieu d'un tick global unique
+
+### CombatSystem — dispatch du stun
+- `processTurn()` : vérifie `hasStatusEffect('stun')` avant `processUnitTurn` — si stun, émet `unit_stunned` et appelle directement `endTurn(unit, null)`, sans exécuter aucun skill ni mouvement
+- `endTurn()` : ajoute `tickStatusEffects('turn_end')` au même point que `tickSkillCooldowns()` — un skill utilisé ce tour est exclu du tick cooldown, mais le stun (sur l'unité elle-même) tick normalement
+- `useSkill()` : nouvelle branche `applySkillEffects()`, appelée indépendamment de `damage`/`heal` — permet un skill purement statut (aucun `skill_used` émis dans ce cas), et un skill mixte (dégâts + effet, ex: `enemy_stunning_blow`)
+- Nouvel event `unit_stunned` dans `CombatEvent` — pas encore consommé par `CombatScene` (feedback visuel reporté)
+
+### Catalogue
+- `statusEffects.data.ts` : premier effet concret, `stun` (`durationTurns: 1`, `tickTiming: 'turn_end'`, `stackable: false`)
+- `skills.data.ts` : `enemy_stunning_blow` (dégâts + `effects: [{ statusId: 'stun' }]`)
+- `enemies.data.ts` : `goblin` équipé de `enemy_stunning_blow`
+
+### Règle amendée
+- `02_RULES.md` : un skill doit avoir au moins un de `damage`/`heal`/`effects` (remplace l'ancienne règle qui n'autorisait que `damage`/`heal`)
+
+### Tests
+- `tests/entities/CombatUnit.test.ts` : application, override de durée, reset non-stackable, stack, tick filtré par timing
+- `tests/systems/CombatSystem.test.ts` : tour sauté + `unit_stunned`, cooldowns tickent pendant le tour raté, expiration après le tour, application d'effet à l'impact (skill mixte et skill purement statut), override de durée via `effects[].durationTurns`
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

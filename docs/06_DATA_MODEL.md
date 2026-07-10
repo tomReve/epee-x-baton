@@ -64,6 +64,64 @@ class Skill {
 }
 ```
 
+## Effets de statut
+
+### `StatusEffectDefinition` (données statiques, `status_effects.data.ts`)
+
+```typescript
+type StatusEffectType   = 'poison' | 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+type StatusPolarity     = 'positive' | 'negative';
+type StatusTickTiming   = 'turn_end';   // seule valeur supportée pour l'instant
+
+interface StatusEffectDefinition {
+  id:            string;
+  name:          string;
+  type:          StatusEffectType;
+  polarity:      StatusPolarity;
+  stackable:     boolean;
+  durationTurns: number;
+  tickTiming:    StatusTickTiming;
+}
+```
+
+Catalogue statique (`STATUS_EFFECTS` / `STATUS_EFFECTS_BY_ID`), même pattern que `skills.data.ts`. **Actuellement vide** — chaque effet concret (stun, poison, shield, buff/debuff...) est ajouté au catalogue lors de sa propre feature dédiée, une discussion à la fois.
+
+`tickTiming` anticipe des déclencheurs futurs autres que la fin de tour (ex: `burn` déclenché par un déplacement sur une case) — non implémenté, seule la valeur `'turn_end'` existe à ce jour.
+
+### `StatusEffect` (entité runtime, `entities/StatusEffect.ts`)
+
+```typescript
+class StatusEffect {
+  data: StatusEffectDefinition;
+  private turnsRemaining: number;  // initialisé à durationTurns
+
+  isExpired(): boolean            // turnsRemaining <= 0
+  tick(): void                    // turnsRemaining-- si > 0
+  getTurnsRemaining(): number
+}
+```
+
+Symétrique à `Skill`/`SkillData` (même relation données statiques ↔ entité runtime).
+
+### Intégration sur `CombatUnit`
+
+```typescript
+abstract class CombatUnit {
+  // ... (inchangé)
+  statusEffects: StatusEffect[];
+
+  applyStatusEffect(def: StatusEffectDefinition): void
+  // non-stackable + déjà présent → remplace l'instance existante (reset durée)
+  // stackable → nouvelle instance ajoutée, les deux coexistent
+
+  hasStatusEffect(id: string): boolean
+  tickStatusEffects(): void
+  // tick toutes les instances actives, retire celles expirées
+}
+```
+
+**Statut** : infrastructure posée, **non branchée** dans `CombatSystem` — `tickStatusEffects()` n'est appelé nulle part encore. Aucun effet concret n'existe dans le catalogue. Le premier effet à implémenter (probablement stun) branchera l'appel dans `endTurn()`, au même point que `tickSkillCooldowns()`.
+
 ### Formes AOE
 
 ```typescript

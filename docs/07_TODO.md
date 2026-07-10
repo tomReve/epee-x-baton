@@ -3,19 +3,24 @@
 ## Priorité haute (prochaines sessions)
 
 ### Effets de statut / effets de sort spéciaux
-- [ ] Poison (dégâts par tour)
-- [ ] Burn (case appliquant des dégats sous certaines conditions)
-- [ ] Stun / Frozen (passe le tour, empêche certaines actions) — dépend du refactor "déplacement avant/après skill"
-- [ ] Shield (absorption de dégâts) — dépend de la décision Hero/Enemy (touche `takeDamage()`)
-- [ ] Taunt / Fear (les ennemis focus / evite le joueur qui à taunter / fear) — à coordonner avec "ciblage intelligent"
-- [ ] Buff/Debuff (améliore / diminue les statistiques du joueur (attaque / def / crit / speed / mouvement / etc))
-- [ ] Dispel (retire les status)
-- [ ] Lifesteal (soigne le héros de X% des dégats subits, ignore les dégats appliqués aux shields)
-- [ ] Réduction de cooldown (réduit le cooldown de x sorts)
-- [ ] Shield break (dommage supplémentaire sur les boucliers)
-- [ ] Contre (renvoi de dégats)
-- [ ] Ajouter `effects?: StatusEffect[]` dans `SkillData` dès maintenant pour préparer la structure
+- [x] Infrastructure de base posée : `StatusEffectDefinition`, `StatusEffect` (runtime), `CombatUnit.statusEffects` — catalogue vide, non branché dans `CombatSystem`
+- [ ] Stun (passe le tour, empêche l'action) Décisions déjà actées : cooldowns tickent normalement pendant le tour raté ; le tick de durée du stun se fait en fin de tour (même timing que `tickSkillCooldowns`), pour que `durationTurns: N` bloque exactement N tours
+- [ ] Poison (dégâts par tour) — `tickTiming` autre que `'turn_end'` à définir (ex: `'turn_start'`), pas encore supporté par l'infra actuelle
+- [ ] Sort déclenchant un effet (par exemple, un sort des déclenche le poison)
+- [ ] Burn (case appliquant des dégâts) — `tickTiming` autre que `'turn_end'` à définir (ex: `'on_move'`), pas encore supporté par l'infra actuelle
+- [ ] Buff/Debuff stats (attaque/def/crit/speed/mouvement)
+- [ ] Taunt / Fear — à coordonner avec le ciblage intelligent existant
+- [ ] Contre (renvoi de dégâts)
+- [ ] **A rediscuter** : pas de champ générique `effects?: StatusEffect[]` sur `SkillData` pour l'instant — chaque skill qui applique un effet aura un champ dédié explicite, à définir au cas par cas quand le premier effet (stun) sera implémenté
 - [ ] **À trancher avant implémentation** : ordre d'application quand plusieurs effets actifs simultanément sur une même unité (ex: Poison + Burn + Shield en fin de tour)
+
+### Propriétés / effets de sort ponctuelles résolus à l'impact d'un skill :
+- [ ] Cadrer le fonctionnement pour centraliser un maximum ce genre de propriétés sans divergé de l'architecture actuelle
+- [ ] Shield (absorption de dégâts) - Applique un bouclier protégeant de x degats avant de toucher les PV réels
+- [ ] Dispel (retire les statuts, négatif si cible allié, positif si cible ennemi)
+- [ ] Lifesteal — pas un statut, un champ `lifesteal?: number` sur `SkillDefinition`, lu dans `applySkillImpact` (voir 04_DECISIONS.md)
+- [ ] Réduction de cooldown
+- [ ] Shield break — dépend de Shield ; champ dédié lu au même point que le shield, pas un statut
 
 ## Priorité moyenne
 
@@ -81,6 +86,9 @@
 
 ## Priorité basse
 
+### Sytème de tags sur les skills
+- [ ] Implémenté un système de tag sur les skills (exemple : attack, debuff, etc) purement informatif (reflexion sur quelque chose d'automatisé ou manuel)
+
 ### Définir l'identité des classes et une bonne base de skills
 - [ ] Réflexion sur l'identité des classes
 - [ ] Réflexion et création d'une bonne liste de skills pour chaque classe correspondant à son rôle
@@ -127,6 +135,9 @@
 
 ### Hot-reload
 - [ ] Hot-reload des données JSON sans restart du serveur de dev
+
+### Back-end et BDD
+- [ ] Construire un backend et une base de données pour stocker les informations (statiques (sorts/infos heros et monstre de base, etc) et dynamique (progression))
 
 ## À confirmer
 

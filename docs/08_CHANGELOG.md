@@ -285,6 +285,25 @@ Historique des grandes décisions et évolutions du projet, dans l'ordre chronol
 - Choix : les deux vitesses (logique et Phaser) sont synchronisées manuellement par le même multiplicateur passé des deux côtés, pas de state partagé — cohérent avec la séparation stricte `CombatSystem`/`CombatScene` déjà en place
 - Reset à x1 au `scene.restart()` (resize ou rejouer), identique au comportement de pause
 
+---
+
+## Phase 14 — Infrastructure des effets de statut
+
+### StatusEffectDefinition et catalogue statique
+- Nouveau fichier `types/game.types.ts` : `StatusEffectType`, `StatusPolarity`, `StatusTickTiming`, `StatusEffectDefinition`
+- Nouveau fichier `data/statusEffects.data.ts` — catalogue vide, même pattern que `skills.data.ts` (`STATUS_EFFECTS`/`STATUS_EFFECTS_BY_ID`)
+- `tickTiming` anticipe des déclencheurs futurs autres que la fin de tour (ex: burn sur déplacement) — seule la valeur `'turn_end'` existe actuellement
+
+### StatusEffect (entité runtime)
+- Nouveau fichier `entities/StatusEffect.ts` — symétrique à `Skill`/`SkillData` (`isExpired()`, `tick()`, `getTurnsRemaining()`)
+
+### CombatUnit étendu
+- `statusEffects: StatusEffect[]`, `applyStatusEffect()`, `hasStatusEffect()`, `tickStatusEffects()`
+- Effet non-stackable déjà présent → remplacé (reset durée) ; effet stackable → nouvelle instance ajoutée en plus
+
+### Statut
+- Infrastructure posée, **non branchée** dans `CombatSystem` — `tickStatusEffects()` n'est appelé nulle part. Catalogue vide. Chaque effet concret sera une feature dédiée séparée.
+
 ## Bugs résolus notables
 
 | Bug | Cause | Fix |

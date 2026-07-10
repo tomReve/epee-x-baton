@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeCombatUnit, makeSkill } from '../helpers/factories';
+import { makeCombatUnit, makeSkill, makeStatusEffectDef } from '../helpers/factories';
 
 describe('CombatUnit', () => {
 
@@ -97,6 +97,73 @@ describe('CombatUnit', () => {
       unit.tickSkillCooldowns(new Set(['a']));
       expect(unit.skills[0].getTurnsRemaining()).toBe(2); // exclu
       expect(unit.skills[1].getTurnsRemaining()).toBe(1); // tické
+    });
+  });
+
+  describe('CombatUnit — status effects', () => {
+    it('applyStatusEffect adds the effect, detectable via hasStatusEffect', () => {
+      const unit = makeCombatUnit();
+      const def = makeStatusEffectDef({ id: 'poison' });
+  
+      unit.applyStatusEffect(def);
+  
+      expect(unit.hasStatusEffect('poison')).toBe(true);
+    });
+  
+    it('hasStatusEffect returns false when the effect was never applied', () => {
+      const unit = makeCombatUnit();
+      expect(unit.hasStatusEffect('poison')).toBe(false);
+    });
+  
+    it('reapplying a non-stackable effect replaces the existing instance (resets duration)', () => {
+      const unit = makeCombatUnit();
+      const def = makeStatusEffectDef({ id: 'stun', stackable: false, durationTurns: 2 });
+  
+      unit.applyStatusEffect(def);
+      unit.tickStatusEffects(); // turnsRemaining: 1
+      unit.applyStatusEffect(def); // reset
+  
+      expect(unit.statusEffects).toHaveLength(1);
+      expect(unit.statusEffects[0].getTurnsRemaining()).toBe(2);
+    });
+  
+    it('reapplying a stackable effect keeps both instances', () => {
+      const unit = makeCombatUnit();
+      const def = makeStatusEffectDef({ id: 'poison', stackable: true });
+  
+      unit.applyStatusEffect(def);
+      unit.applyStatusEffect(def);
+  
+      expect(unit.statusEffects).toHaveLength(2);
+    });
+  
+    it('tickStatusEffects decrements all active effects', () => {
+      const unit = makeCombatUnit();
+      unit.applyStatusEffect(makeStatusEffectDef({ id: 'a', durationTurns: 3 }));
+      unit.applyStatusEffect(makeStatusEffectDef({ id: 'b', durationTurns: 3, stackable: true }));
+  
+      unit.tickStatusEffects();
+  
+      expect(unit.statusEffects.every(e => e.getTurnsRemaining() === 2)).toBe(true);
+    });
+  
+    it('tickStatusEffects removes expired effects', () => {
+      const unit = makeCombatUnit();
+      unit.applyStatusEffect(makeStatusEffectDef({ id: 'short', durationTurns: 1 }));
+  
+      unit.tickStatusEffects();
+  
+      expect(unit.hasStatusEffect('short')).toBe(false);
+      expect(unit.statusEffects).toHaveLength(0);
+    });
+  
+    it('hasStatusEffect becomes false after expiration + tick', () => {
+      const unit = makeCombatUnit();
+      unit.applyStatusEffect(makeStatusEffectDef({ id: 'stun', durationTurns: 1 }));
+  
+      expect(unit.hasStatusEffect('stun')).toBe(true);
+      unit.tickStatusEffects();
+      expect(unit.hasStatusEffect('stun')).toBe(false);
     });
   });
 });

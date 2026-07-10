@@ -4,6 +4,7 @@ import { GridSystem, GridUnit } from '../../src/systems/GridSystem';
 import { SkillData } from '../../src/entities/Skill';
 import { TurnSystem } from '../../src/systems/TurnSystem';
 import { CombatSystem, CombatEvent } from '../../src/systems/CombatSystem';
+import { StatusEffectDefinition } from '../../src/types/game.types';
 
 export function makeHero(id: string, speed: number, alive = true): Hero {
   const hero = new Hero({
@@ -76,4 +77,17 @@ export function makeCombatSetup(
   );
 
   return { combat, grid, turns, events };
+}
+
+export function makeStatusEffectDef(overrides?: Partial<StatusEffectDefinition>): StatusEffectDefinition {
+  return {
+    id:            'test_effect',
+    name:          'Test Effect',
+    type:          'debuff',
+    polarity:      'negative',
+    stackable:     false,
+    durationTurns: 2,
+    tickTiming:    'turn_end',
+    ...overrides,
+  };
 }

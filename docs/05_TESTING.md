@@ -18,14 +18,15 @@ npm run test:coverage  # avec rapport de couverture (text + html dans coverage/)
 ```
 tests/
   ├── helpers/
-  │   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit, makeCombatSetup)
+  │   └── factories.ts        # builders partagés (makeHero, makeEnemy, makeUnit, makeSkill, makeCombatUnit, makeCombatSetup, makeStatusEffectDef)
   ├── systems/
   │   ├── TurnSystem.test.ts
   │   ├── GridSystem.test.ts
   │   └── CombatSystem.test.ts
   ├── entities/
   │   ├── Skill.test.ts
-  │   └── CombatUnit.test.ts
+  │   ├── CombatUnit.test.ts
+  │   └── StatusEffect.test.ts
   └── data/
        └── combat.factory.test.ts
 ```
@@ -42,6 +43,7 @@ Tout builder d'entité/objet de test réutilisé dans plusieurs fichiers va dans
 | `makeSkill(overrides?)` | SkillData avec valeurs par défaut, override via objet partiel |
 | `makeCombatUnit(overrides?, isHero?)` | Retourne un `Hero` (défaut) ou un `Enemy` selon le second paramètre — même structure de données pour les deux camps |
 | `makeCombatSetup(heroes, enemies, options?)` | Monte un `CombatSystem` complet prêt à démarrer : `GridSystem` + `TurnSystem` + tableau `events[]` alimenté par le callback. `options.gridUnits` pour un placement explicite, sinon placement par défaut en colonnes opposées |
+| `makeStatusEffectDef(overrides?)` | StatusEffectDefinition avec valeurs par défaut, override via objet partiel |
 
 Avant d'ajouter un nouveau helper : vérifier qu'un existant ne peut pas être réutilisé ou étendu via ses paramètres/overrides.
 

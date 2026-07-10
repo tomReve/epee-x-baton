@@ -161,3 +161,17 @@ export interface PowerRating {
     speed:   number;
   };
 }
+
+export type StatusEffectType = 'poison' | 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+export type StatusPolarity = 'positive' | 'negative';
+export type StatusTickTiming = 'turn_end';
+
+export interface StatusEffectDefinition {
+  id:            string;
+  name:          string;
+  type:          StatusEffectType;
+  polarity:      StatusPolarity;
+  stackable:     boolean;
+  durationTurns: number;
+  tickTiming:    StatusTickTiming;
+}

@@ -229,3 +229,13 @@
 **Bug découvert pendant l'implémentation** : sans ce fix, `currentHitCount` (calculé via `getAoeTargets`, qui incluait déjà correctement le caster) et `bestPosition.hitCount` (calculé via `findBestAoePosition`, qui l'excluait) n'étaient jamais comparables correctement — le caster comptait sur la position actuelle mais jamais sur les positions candidates, rendant la condition `bestPosition.hitCount > currentHitCount` quasiment toujours fausse même quand un déplacement était objectivement meilleur.
 
 **Limite actée** : reste hors scope un heal de zone avec `range > 0` (origine centrée sur un allié à distance plutôt que sur le caster) — testé et écarté : la règle `range: 0 = centré sur le caster` (`02_RULES.md`) est volontairement stricte pour les heals de zone, aucune origine alternative n'est recherchée. Un `range > 0` sur un heal AOE n'est pas un cas supporté par le modèle actuel.
+
+## Effets de statut — infrastructure générique, effets concrets un par un
+
+**Contexte** : besoin de statuts (poison, stun, shield, buff/debuff...) et d'effets de sort spéciaux (lifesteal, shield break). Plusieurs pistes explorées avant de coder.
+
+**Décision** : infrastructure centralisée et générique (`StatusEffectDefinition` catalogue statique + `StatusEffect` runtime + `CombatUnit.statusEffects`), mais **aucun effet concret implémenté avec** — chaque effet (stun, poison, shield...) sera une feature dédiée et discutée séparément, pour bien cadrer ses spécificités (stun touche `processUnitTurn`, burn a un trigger différent de poison, etc.) sans tout deviner à l'avance.
+
+**Rejeté : système de tags génériques remplaçant targetType/targetSide/etc.** — discuté suite à une idée de tags descriptifs sur les skills. Aurait remplacé des champs typés et validés à la compilation (`targetType: 'single' | 'aoe' | 'all'`) par des strings libres non vérifiées, sur une zone de code déjà stable et testée (`GridSystem.getAoeTargets`, `applyTargetPriority`). Aucun problème actuel ne le justifiait. Écarté — reste une piste possible pour une "grosse refacto" future si le besoin devient concret, mais pas un chantier engagé.
+
+**`tickTiming` anticipé mais pas généralisé** — `StatusEffectDefinition.tickTiming` existe dès l'infra de base pour laisser la porte ouverte à des déclencheurs autres que la fin de tour (ex: `burn` sur déplacement/case), sans construire ce mécanisme avant d'avoir un cas réel qui le justifie (`burn`, prévu dans une feature ultérieure).
